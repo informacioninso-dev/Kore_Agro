@@ -1,0 +1,377 @@
+<section id="finance-page" class="space-y-6">
+  <div class="flex flex-col gap-4 border-b border-neutral-800 pb-5 xl:flex-row xl:items-end xl:justify-between">
+    <div>
+      <div class="text-xs uppercase tracking-[0.18em] text-emerald-400">Control y Costo Real</div>
+      <h1 class="mt-1 text-2xl font-semibold text-white">Motor Financiero</h1>
+    </div>
+
+    <div class="flex flex-col gap-2">
+      <form class="grid gap-2 md:grid-cols-3 xl:grid-cols-7"
+            hx-get="{% url 'dashboard:finance_fragment' %}"
+            hx-target="#finance-page"
+            hx-swap="outerHTML">
+        <select name="farm" class="rounded border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-white">
+          {% for farm in farms %}
+            <option value="{{ farm.id }}" {% if selected_farm.id == farm.id %}selected{% endif %}>{{ farm.name }}</option>
+          {% endfor %}
+        </select>
+        <select name="group" class="rounded border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-white">
+          <option value="">Todos los lotes</option>
+          {% for group in groups %}
+            <option value="{{ group.id }}" {% if selected_group.id == group.id %}selected{% endif %}>{{ group.name }}</option>
+          {% endfor %}
+        </select>
+        <select name="animal" class="rounded border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-white">
+          <option value="">Todos los animales</option>
+          {% for animal in animals %}
+            <option value="{{ animal.id }}" {% if selected_animal.id == animal.id %}selected{% endif %}>{{ animal.tag }}</option>
+          {% endfor %}
+        </select>
+        <input name="start" value="{{ start_date|date:'Y-m-d' }}" type="date" class="rounded border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-white">
+        <input name="end" value="{{ end_date|date:'Y-m-d' }}" type="date" class="rounded border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-white">
+        <button class="rounded bg-emerald-500 px-4 py-2 text-sm font-semibold text-neutral-950 hover:bg-emerald-400 md:col-span-1 xl:col-span-2">Filtrar</button>
+      </form>
+      <form class="flex justify-end"
+            hx-post="{% url 'dashboard:finance_close_period' %}"
+            hx-target="#finance-page"
+            hx-swap="outerHTML">
+        {% csrf_token %}
+        <input type="hidden" name="farm" value="{{ selected_farm.id|default:'' }}">
+        <input type="hidden" name="group" value="{{ selected_group.id|default:'' }}">
+        <input type="hidden" name="animal" value="{{ selected_animal.id|default:'' }}">
+        <input type="hidden" name="start" value="{{ start_date|date:'Y-m-d' }}">
+        <input type="hidden" name="end" value="{{ end_date|date:'Y-m-d' }}">
+        <button class="rounded border border-emerald-700 px-4 py-2 text-sm font-semibold text-emerald-300 hover:bg-emerald-950">Cerrar periodo</button>
+      </form>
+    </div>
+  </div>
+
+  {% if finance_message %}
+    <div class="rounded border border-emerald-800 bg-emerald-950 px-4 py-3 text-sm text-emerald-100">
+      {{ finance_message }}
+    </div>
+  {% endif %}
+
+  {% if finance_error %}
+    <div class="rounded border border-red-800 bg-red-950 px-4 py-3 text-sm text-red-100">
+      {{ finance_error }}
+    </div>
+  {% endif %}
+
+  <section class="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
+    <article class="rounded border border-neutral-800 bg-neutral-900 p-4">
+      <div class="text-xs uppercase text-neutral-500">Litros producidos</div>
+      <div class="mt-2 text-2xl font-semibold">{{ pnl.liters|floatformat:2 }}</div>
+      <div class="mt-1 text-xs text-neutral-500">Vendibles {{ pnl.saleable_liters|floatformat:2 }}</div>
+    </article>
+    <article class="rounded border {% if pnl.discarded_liters %}border-amber-700 bg-amber-950{% else %}border-neutral-800 bg-neutral-900{% endif %} p-4">
+      <div class="text-xs uppercase {% if pnl.discarded_liters %}text-amber-300{% else %}text-neutral-500{% endif %}">Litros descartados</div>
+      <div class="mt-2 text-2xl font-semibold {% if pnl.discarded_liters %}text-amber-100{% endif %}">{{ pnl.discarded_liters|floatformat:2 }}</div>
+      <div class="mt-1 text-xs {% if pnl.discarded_liters %}text-amber-400{% else %}text-neutral-500{% endif %}">Retiro de leche $ {{ pnl.discarded_value|floatformat:2 }}</div>
+    </article>
+    <article class="rounded border border-neutral-800 bg-neutral-900 p-4">
+      <div class="text-xs uppercase text-neutral-500">Ingresos</div>
+      <div class="mt-2 text-2xl font-semibold">$ {{ pnl.revenue|floatformat:2 }}</div>
+    </article>
+    <article class="rounded border border-neutral-800 bg-neutral-900 p-4">
+      <div class="text-xs uppercase text-neutral-500">Costos</div>
+      <div class="mt-2 text-2xl font-semibold">$ {{ pnl.costs|floatformat:2 }}</div>
+    </article>
+    <article class="rounded border border-neutral-800 bg-neutral-900 p-4">
+      <div class="text-xs uppercase text-neutral-500">Costo/L</div>
+      <div class="mt-2 text-2xl font-semibold">$ {{ pnl.cost_per_liter|floatformat:4 }}</div>
+      <div class="mt-1 text-xs text-neutral-500">Vendible $ {{ pnl.cost_per_saleable_liter|floatformat:4 }}</div>
+    </article>
+    <article class="rounded border border-emerald-700 bg-emerald-950 p-4">
+      <div class="text-xs uppercase text-emerald-300">Utilidad neta</div>
+      <div class="mt-2 text-2xl font-semibold text-emerald-100">$ {{ pnl.net_profit|floatformat:2 }}</div>
+    </article>
+  </section>
+
+  <section class="grid gap-6 xl:grid-cols-2">
+    <div class="rounded border border-neutral-800 bg-neutral-950">
+      <div class="border-b border-neutral-800 px-4 py-3">
+        <h2 class="text-sm font-semibold text-white">Gasto operativo directo</h2>
+        <p class="mt-1 text-xs text-neutral-500">Mano de obra, servicios y fletes que no pasan por bodega.</p>
+      </div>
+      <form class="grid gap-3 p-4 md:grid-cols-2"
+            hx-post="{% url 'dashboard:finance_record_expense' %}"
+            hx-target="#finance-page"
+            hx-swap="outerHTML">
+        {% csrf_token %}
+        <input type="hidden" name="start" value="{{ start_date|date:'Y-m-d' }}">
+        <input type="hidden" name="end" value="{{ end_date|date:'Y-m-d' }}">
+        {% include "dashboard/_form_fields.html" with form=expense_form %}
+        <div class="md:col-span-2">
+          <button class="rounded bg-emerald-500 px-4 py-2 text-sm font-semibold text-neutral-950 hover:bg-emerald-400" type="submit">Registrar gasto</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="rounded border border-neutral-800 bg-neutral-950">
+      <div class="border-b border-neutral-800 px-4 py-3">
+        <h2 class="text-sm font-semibold text-white">Venta de animal</h2>
+        <p class="mt-1 text-xs text-neutral-500">Registra el ingreso y retira el animal del hato productivo.</p>
+      </div>
+      <form class="grid gap-3 p-4 md:grid-cols-2"
+            hx-post="{% url 'dashboard:finance_record_animal_sale' %}"
+            hx-target="#finance-page"
+            hx-swap="outerHTML">
+        {% csrf_token %}
+        <input type="hidden" name="start" value="{{ start_date|date:'Y-m-d' }}">
+        <input type="hidden" name="end" value="{{ end_date|date:'Y-m-d' }}">
+        {% include "dashboard/_form_fields.html" with form=animal_sale_form %}
+        <div class="md:col-span-2">
+          <button class="rounded bg-emerald-500 px-4 py-2 text-sm font-semibold text-neutral-950 hover:bg-emerald-400" type="submit">Registrar venta</button>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <section class="grid gap-6 xl:grid-cols-[1fr_1.15fr]">
+    <div class="rounded border border-neutral-800 bg-neutral-950">
+      <div class="border-b border-neutral-800 px-4 py-3">
+        <h2 class="text-sm font-semibold text-white">Cierres operativos</h2>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full min-w-[680px] text-left text-sm">
+          <thead class="bg-neutral-900 text-xs uppercase text-neutral-500">
+            <tr>
+              <th class="px-4 py-3">Scope</th>
+              <th class="px-4 py-3">Periodo</th>
+              <th class="px-4 py-3 text-right">Litros</th>
+              <th class="px-4 py-3 text-right">Descarte</th>
+              <th class="px-4 py-3 text-right">Costo/L</th>
+              <th class="px-4 py-3 text-right">Neto</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-neutral-900">
+            {% for row in snapshot_rows %}
+              <tr class="text-neutral-200">
+                <td class="px-4 py-3">{{ row.get_scope_display }}</td>
+                <td class="px-4 py-3">{{ row.start_date|date:"Y-m-d" }} / {{ row.end_date|date:"Y-m-d" }}</td>
+                <td class="px-4 py-3 text-right">{{ row.liters|floatformat:2 }}</td>
+                <td class="px-4 py-3 text-right {% if row.discarded_liters %}text-amber-300{% endif %}">{{ row.discarded_liters|floatformat:2 }}</td>
+                <td class="px-4 py-3 text-right">$ {{ row.cost_per_liter|floatformat:4 }}</td>
+                <td class="px-4 py-3 text-right">$ {{ row.net_profit|floatformat:2 }}</td>
+              </tr>
+            {% empty %}
+              <tr>
+                <td class="px-4 py-6 text-sm text-neutral-500" colspan="6">Sin cierres guardados.</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="rounded border border-neutral-800 bg-neutral-950">
+      <div class="border-b border-neutral-800 px-4 py-3">
+        <h2 class="text-sm font-semibold text-white">Excepciones de asignacion</h2>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full min-w-[760px] text-left text-sm">
+          <thead class="bg-neutral-900 text-xs uppercase text-neutral-500">
+            <tr>
+              <th class="px-4 py-3">Fecha</th>
+              <th class="px-4 py-3">Tipo</th>
+              <th class="px-4 py-3">Destino</th>
+              <th class="px-4 py-3">Motivo</th>
+              <th class="px-4 py-3 text-right">Litros</th>
+              <th class="px-4 py-3 text-right">Valor</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-neutral-900">
+            {% for row in unassigned_rows %}
+              <tr class="text-neutral-200">
+                <td class="px-4 py-3">{{ row.occurred_on|date:"Y-m-d" }}</td>
+                <td class="px-4 py-3">{{ row.line_type }}</td>
+                <td class="px-4 py-3">{{ row.target }}</td>
+                <td class="px-4 py-3">{{ row.reason }}</td>
+                <td class="px-4 py-3 text-right">{{ row.liters|floatformat:2 }}</td>
+                <td class="px-4 py-3 text-right">$ {{ row.amount|floatformat:2 }}</td>
+              </tr>
+            {% empty %}
+              <tr>
+                <td class="px-4 py-6 text-sm text-neutral-500" colspan="6">Sin excepciones en el periodo.</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="grid gap-6 xl:grid-cols-[0.85fr_1.15fr]">
+    <div class="rounded border border-neutral-800 bg-neutral-950">
+      <div class="border-b border-neutral-800 px-4 py-3">
+        <h2 class="text-sm font-semibold text-white">Costos por categoria</h2>
+      </div>
+      <div class="space-y-4 p-4">
+        {% for row in cost_rows %}
+          <div>
+            <div class="mb-1 flex items-center justify-between gap-3 text-sm">
+              <span class="text-neutral-200">{{ row.label }}</span>
+              <span class="font-mono text-neutral-400">$ {{ row.amount|floatformat:2 }}</span>
+            </div>
+            <div class="h-2 rounded bg-neutral-800">
+              <div class="h-2 rounded bg-emerald-500" style="width: {{ row.percentage|floatformat:0 }}%"></div>
+            </div>
+          </div>
+        {% empty %}
+          <div class="py-6 text-sm text-neutral-500">Sin costos en el periodo.</div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="rounded border border-neutral-800 bg-neutral-950">
+      <div class="border-b border-neutral-800 px-4 py-3">
+        <h2 class="text-sm font-semibold text-white">P&L diario</h2>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full min-w-[720px] text-left text-sm">
+          <thead class="bg-neutral-900 text-xs uppercase text-neutral-500">
+            <tr>
+              <th class="px-4 py-3">Fecha</th>
+              <th class="px-4 py-3 text-right">Litros</th>
+              <th class="px-4 py-3 text-right">Descarte</th>
+              <th class="px-4 py-3 text-right">Ingresos</th>
+              <th class="px-4 py-3 text-right">Costos</th>
+              <th class="px-4 py-3 text-right">Neto</th>
+              <th class="px-4 py-3 text-right">Costo/L</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-neutral-900">
+            {% for row in daily_rows %}
+              <tr class="text-neutral-200">
+                <td class="px-4 py-3">{{ row.day|date:"Y-m-d" }}</td>
+                <td class="px-4 py-3 text-right">{{ row.pnl.liters|floatformat:2 }}</td>
+                <td class="px-4 py-3 text-right {% if row.pnl.discarded_liters %}text-amber-300{% endif %}">{{ row.pnl.discarded_liters|floatformat:2 }}</td>
+                <td class="px-4 py-3 text-right">$ {{ row.pnl.revenue|floatformat:2 }}</td>
+                <td class="px-4 py-3 text-right">$ {{ row.pnl.costs|floatformat:2 }}</td>
+                <td class="px-4 py-3 text-right">$ {{ row.pnl.net_profit|floatformat:2 }}</td>
+                <td class="px-4 py-3 text-right">$ {{ row.pnl.cost_per_liter|floatformat:4 }}</td>
+              </tr>
+            {% empty %}
+              <tr>
+                <td class="px-4 py-6 text-sm text-neutral-500" colspan="7">Sin movimiento en el periodo.</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="grid gap-6 xl:grid-cols-2">
+    <div class="rounded border border-neutral-800 bg-neutral-950">
+      <div class="border-b border-neutral-800 px-4 py-3">
+        <h2 class="text-sm font-semibold text-white">Lotes</h2>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full min-w-[640px] text-left text-sm">
+          <thead class="bg-neutral-900 text-xs uppercase text-neutral-500">
+            <tr>
+              <th class="px-4 py-3">Lote</th>
+              <th class="px-4 py-3 text-right">Litros</th>
+              <th class="px-4 py-3 text-right">Ingresos</th>
+              <th class="px-4 py-3 text-right">Costos</th>
+              <th class="px-4 py-3 text-right">Neto</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-neutral-900">
+            {% for row in group_rows %}
+              <tr class="text-neutral-200">
+                <td class="px-4 py-3">{{ row.label }}</td>
+                <td class="px-4 py-3 text-right">{{ row.pnl.liters|floatformat:2 }}</td>
+                <td class="px-4 py-3 text-right">$ {{ row.pnl.revenue|floatformat:2 }}</td>
+                <td class="px-4 py-3 text-right">$ {{ row.pnl.costs|floatformat:2 }}</td>
+                <td class="px-4 py-3 text-right">$ {{ row.pnl.net_profit|floatformat:2 }}</td>
+              </tr>
+            {% empty %}
+              <tr>
+                <td class="px-4 py-6 text-sm text-neutral-500" colspan="5">Sin lotes activos.</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="rounded border border-neutral-800 bg-neutral-950">
+      <div class="border-b border-neutral-800 px-4 py-3">
+        <h2 class="text-sm font-semibold text-white">Animales</h2>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full min-w-[640px] text-left text-sm">
+          <thead class="bg-neutral-900 text-xs uppercase text-neutral-500">
+            <tr>
+              <th class="px-4 py-3">Arete</th>
+              <th class="px-4 py-3 text-right">Litros</th>
+              <th class="px-4 py-3 text-right">Ingresos</th>
+              <th class="px-4 py-3 text-right">Costos</th>
+              <th class="px-4 py-3 text-right">Costo/L</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-neutral-900">
+            {% for row in animal_rows %}
+              <tr class="text-neutral-200">
+                <td class="px-4 py-3">{{ row.label }}</td>
+                <td class="px-4 py-3 text-right">{{ row.pnl.liters|floatformat:2 }}</td>
+                <td class="px-4 py-3 text-right">$ {{ row.pnl.revenue|floatformat:2 }}</td>
+                <td class="px-4 py-3 text-right">$ {{ row.pnl.costs|floatformat:2 }}</td>
+                <td class="px-4 py-3 text-right">$ {{ row.pnl.cost_per_liter|floatformat:4 }}</td>
+              </tr>
+            {% empty %}
+              <tr>
+                <td class="px-4 py-6 text-sm text-neutral-500" colspan="5">Sin animales activos.</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="rounded border border-neutral-800 bg-neutral-950">
+    <div class="border-b border-neutral-800 px-4 py-3">
+      <h2 class="text-sm font-semibold text-white">Trazabilidad de eventos</h2>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full min-w-[900px] text-left text-sm">
+        <thead class="bg-neutral-900 text-xs uppercase text-neutral-500">
+          <tr>
+            <th class="px-4 py-3">Fecha</th>
+            <th class="px-4 py-3">Evento</th>
+            <th class="px-4 py-3">Estado</th>
+            <th class="px-4 py-3">UUID</th>
+            <th class="px-4 py-3 text-right">Litros</th>
+            <th class="px-4 py-3 text-right">Descarte</th>
+            <th class="px-4 py-3 text-right">Ingresos</th>
+            <th class="px-4 py-3 text-right">Costos</th>
+            <th class="px-4 py-3 text-right">Neto</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-neutral-900">
+          {% for row in trace_rows %}
+            <tr class="text-neutral-200">
+              <td class="px-4 py-3">{{ row.occurred_on|date:"Y-m-d" }}</td>
+              <td class="px-4 py-3">{{ row.event_type }}</td>
+              <td class="px-4 py-3">{{ row.status }}</td>
+              <td class="px-4 py-3 font-mono text-[11px] text-neutral-400">{{ row.source_event_id }}</td>
+              <td class="px-4 py-3 text-right">{{ row.liters|floatformat:2 }}</td>
+              <td class="px-4 py-3 text-right {% if row.discarded_liters %}text-amber-300{% endif %}">{{ row.discarded_liters|floatformat:2 }}</td>
+              <td class="px-4 py-3 text-right">$ {{ row.revenue|floatformat:2 }}</td>
+              <td class="px-4 py-3 text-right">$ {{ row.costs|floatformat:2 }}</td>
+              <td class="px-4 py-3 text-right">$ {{ row.net_profit|floatformat:2 }}</td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td class="px-4 py-6 text-sm text-neutral-500" colspan="9">Sin eventos economicos en el periodo.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</section>

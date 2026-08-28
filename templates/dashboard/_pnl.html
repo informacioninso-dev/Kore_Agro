@@ -1,0 +1,25 @@
+<section id="pnl-panel" class="mb-6">
+  <div class="grid gap-3 md:grid-cols-5">
+    <article class="rounded border border-neutral-800 bg-neutral-900 p-4">
+      <div class="text-xs uppercase text-neutral-500">Litros</div>
+      <div class="mt-2 text-2xl font-semibold">{{ pnl.liters|floatformat:2 }}</div>
+    </article>
+    <article class="rounded border border-neutral-800 bg-neutral-900 p-4">
+      <div class="text-xs uppercase text-neutral-500">Ingresos</div>
+      <div class="mt-2 text-2xl font-semibold">$ {{ pnl.revenue|floatformat:2 }}</div>
+    </article>
+    <article class="rounded border border-neutral-800 bg-neutral-900 p-4">
+      <div class="text-xs uppercase text-neutral-500">Costos</div>
+      <div class="mt-2 text-2xl font-semibold">$ {{ pnl.costs|floatformat:2 }}</div>
+    </article>
+    <article class="rounded border border-neutral-800 bg-neutral-900 p-4">
+      <div class="text-xs uppercase text-neutral-500">Costo/L</div>
+      <div class="mt-2 text-2xl font-semibold">$ {{ pnl.cost_per_liter|floatformat:4 }}</div>
+    </article>
+    <article class="rounded border border-emerald-700 bg-emerald-950 p-4">
+      <div class="text-xs uppercase text-emerald-300">Utilidad neta</div>
+      <div class="mt-2 text-2xl font-semibold text-emerald-100">$ {{ pnl.net_profit|floatformat:2 }}</div>
+    </article>
+  </div>
+</section>
+

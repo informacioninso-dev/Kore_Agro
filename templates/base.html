@@ -1,0 +1,31 @@
+{% load static %}
+<!doctype html>
+<html lang="es" class="bg-neutral-950 text-neutral-100">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}KORE AGRO{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+  </head>
+  <body class="min-h-screen bg-neutral-950 text-neutral-100 antialiased">
+    <header class="border-b border-neutral-800 bg-neutral-950/90">
+      <div class="mx-auto flex max-w-7xl items-center justify-between px-5 py-4">
+        <div>
+          <div class="text-sm uppercase tracking-[0.18em] text-emerald-400">Binnso</div>
+          <div class="text-xl font-semibold">KORE AGRO</div>
+        </div>
+        <nav class="flex items-center gap-2 text-sm text-neutral-300">
+          <a class="rounded border border-neutral-700 px-3 py-2 hover:border-emerald-500" href="/">Dashboard</a>
+          <a class="rounded border border-neutral-700 px-3 py-2 hover:border-emerald-500" href="/finanzas/">Finanzas</a>
+          <a class="rounded border border-neutral-700 px-3 py-2 hover:border-emerald-500" href="/datos/">Datos MVP</a>
+          <a class="rounded border border-neutral-700 px-3 py-2 hover:border-emerald-500" href="/field/">Campo</a>
+          <a class="rounded border border-neutral-700 px-3 py-2 hover:border-emerald-500" href="/admin/">Admin</a>
+        </nav>
+      </div>
+    </header>
+    <main class="mx-auto max-w-7xl px-5 py-6">
+      {% block content %}{% endblock %}
+    </main>
+  </body>
+</html>

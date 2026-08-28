@@ -1,0 +1,387 @@
+<div id="master-data-content" class="space-y-6">
+  {% if message %}
+    <div class="rounded border border-emerald-800 bg-emerald-950 px-4 py-3 text-sm text-emerald-100">
+      {{ message }}
+    </div>
+  {% endif %}
+
+  {% if error %}
+    <div class="rounded border border-red-800 bg-red-950 px-4 py-3 text-sm text-red-100">
+      {{ error }}
+    </div>
+  {% endif %}
+
+  <section class="grid gap-4 xl:grid-cols-2">
+    <article class="rounded border border-neutral-800 bg-neutral-900">
+      <header class="border-b border-neutral-800 px-4 py-3">
+        <h2 class="font-semibold">Haciendas</h2>
+      </header>
+      <div class="grid gap-4 p-4">
+        <form
+          class="grid gap-3 md:grid-cols-2"
+          hx-post="{% if farm_edit_id %}{% url 'dashboard:farm_update' farm_edit_id %}{% else %}{% url 'dashboard:farm_create' %}{% endif %}"
+          hx-target="#master-data-content"
+          hx-swap="outerHTML"
+        >
+          {% csrf_token %}
+          {% include "dashboard/_form_fields.html" with form=farm_form %}
+          <div class="flex gap-2 md:col-span-2">
+            <button class="rounded bg-emerald-500 px-4 py-2 text-sm font-semibold text-neutral-950 hover:bg-emerald-400" type="submit">
+              {% if farm_edit_id %}Actualizar hacienda{% else %}Crear hacienda{% endif %}
+            </button>
+            {% if farm_edit_id %}
+              <button class="rounded border border-neutral-700 px-4 py-2 text-sm text-neutral-300" type="button" hx-get="{% url 'dashboard:master_data' %}" hx-target="#master-data-content" hx-swap="outerHTML">Cancelar</button>
+            {% endif %}
+          </div>
+        </form>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm">
+            <thead class="text-xs uppercase text-neutral-500">
+              <tr>
+                <th class="py-2">Codigo</th>
+                <th>Nombre</th>
+                <th>Provincia</th>
+                <th>Leche</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-neutral-800">
+              {% for farm in farms %}
+                <tr>
+                  <td class="py-2 font-mono text-neutral-300">{{ farm.code }}</td>
+                  <td>{{ farm.name }}</td>
+                  <td>{{ farm.province|default:"-" }}</td>
+                  <td>$ {{ farm.default_milk_price|floatformat:4 }}</td>
+                  <td class="flex justify-end gap-2 py-2">
+                    <button class="rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-300" type="button" hx-get="{% url 'dashboard:farm_edit' farm.id %}" hx-target="#master-data-content" hx-swap="outerHTML">Editar</button>
+                    <form hx-post="{% url 'dashboard:farm_deactivate' farm.id %}" hx-target="#master-data-content" hx-swap="outerHTML" hx-confirm="Desactivar hacienda?">
+                      {% csrf_token %}
+                      <button class="rounded border border-red-800 px-2 py-1 text-xs text-red-300" type="submit">Desactivar</button>
+                    </form>
+                  </td>
+                </tr>
+              {% empty %}
+                <tr><td colspan="5" class="py-3 text-neutral-500">Sin haciendas activas.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </article>
+
+    <article class="rounded border border-neutral-800 bg-neutral-900">
+      <header class="border-b border-neutral-800 px-4 py-3">
+        <h2 class="font-semibold">Lotes</h2>
+      </header>
+      <div class="grid gap-4 p-4">
+        <form
+          class="grid gap-3 md:grid-cols-2"
+          hx-post="{% if group_edit_id %}{% url 'dashboard:group_update' group_edit_id %}{% else %}{% url 'dashboard:group_create' %}{% endif %}"
+          hx-target="#master-data-content"
+          hx-swap="outerHTML"
+        >
+          {% csrf_token %}
+          {% include "dashboard/_form_fields.html" with form=group_form %}
+          <div class="flex gap-2 md:col-span-2">
+            <button class="rounded bg-emerald-500 px-4 py-2 text-sm font-semibold text-neutral-950 hover:bg-emerald-400" type="submit">
+              {% if group_edit_id %}Actualizar lote{% else %}Crear lote{% endif %}
+            </button>
+            {% if group_edit_id %}
+              <button class="rounded border border-neutral-700 px-4 py-2 text-sm text-neutral-300" type="button" hx-get="{% url 'dashboard:master_data' %}" hx-target="#master-data-content" hx-swap="outerHTML">Cancelar</button>
+            {% endif %}
+          </div>
+        </form>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm">
+            <thead class="text-xs uppercase text-neutral-500">
+              <tr>
+                <th class="py-2">Nombre</th>
+                <th>Hacienda</th>
+                <th>Tipo</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-neutral-800">
+              {% for group in groups %}
+                <tr>
+                  <td class="py-2">{{ group.name }}</td>
+                  <td>{{ group.farm.code }}</td>
+                  <td>{{ group.get_group_type_display }}</td>
+                  <td class="flex justify-end gap-2 py-2">
+                    <button class="rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-300" type="button" hx-get="{% url 'dashboard:group_edit' group.id %}" hx-target="#master-data-content" hx-swap="outerHTML">Editar</button>
+                    <form hx-post="{% url 'dashboard:group_deactivate' group.id %}" hx-target="#master-data-content" hx-swap="outerHTML" hx-confirm="Desactivar lote?">
+                      {% csrf_token %}
+                      <button class="rounded border border-red-800 px-2 py-1 text-xs text-red-300" type="submit">Desactivar</button>
+                    </form>
+                  </td>
+                </tr>
+              {% empty %}
+                <tr><td colspan="4" class="py-3 text-neutral-500">Sin lotes activos.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </article>
+  </section>
+
+  <section class="rounded border border-neutral-800 bg-neutral-900">
+    <header class="border-b border-neutral-800 px-4 py-3">
+      <h2 class="font-semibold">Hato</h2>
+    </header>
+    <div class="grid gap-4 p-4">
+      <form
+        class="grid gap-3 md:grid-cols-3 xl:grid-cols-4"
+        hx-post="{% if animal_edit_id %}{% url 'dashboard:animal_update' animal_edit_id %}{% else %}{% url 'dashboard:animal_create' %}{% endif %}"
+        hx-target="#master-data-content"
+        hx-swap="outerHTML"
+      >
+        {% csrf_token %}
+        {% include "dashboard/_form_fields.html" with form=animal_form %}
+        <div class="flex gap-2 md:col-span-3 xl:col-span-4">
+          <button class="rounded bg-emerald-500 px-4 py-2 text-sm font-semibold text-neutral-950 hover:bg-emerald-400" type="submit">
+            {% if animal_edit_id %}Actualizar animal{% else %}Crear animal{% endif %}
+          </button>
+          {% if animal_edit_id %}
+            <button class="rounded border border-neutral-700 px-4 py-2 text-sm text-neutral-300" type="button" hx-get="{% url 'dashboard:master_data' %}" hx-target="#master-data-content" hx-swap="outerHTML">Cancelar</button>
+          {% endif %}
+        </div>
+      </form>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm">
+          <thead class="text-xs uppercase text-neutral-500">
+            <tr>
+              <th class="py-2">Arete</th>
+              <th>Estado</th>
+              <th>Lote</th>
+              <th>DEL</th>
+              <th>Ult. servicio</th>
+              <th>Parto esperado</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-neutral-800">
+            {% for animal in animals %}
+              <tr>
+                <td class="py-2 font-mono text-neutral-200">{{ animal.tag }}</td>
+                <td>{{ animal.get_status_display }}</td>
+                <td>{{ animal.current_group.name|default:"-" }}</td>
+                <td>{{ animal.days_in_milk|default:"-" }}</td>
+                <td>{{ animal.last_service_date|date:"Y-m-d"|default:"-" }}</td>
+                <td>{{ animal.expected_calving_date|date:"Y-m-d"|default:"-" }}</td>
+                <td class="flex justify-end gap-2 py-2">
+                  <button class="rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-300" type="button" hx-get="{% url 'dashboard:animal_edit' animal.id %}" hx-target="#master-data-content" hx-swap="outerHTML">Editar</button>
+                  <form hx-post="{% url 'dashboard:animal_deactivate' animal.id %}" hx-target="#master-data-content" hx-swap="outerHTML" hx-confirm="Desactivar animal?">
+                    {% csrf_token %}
+                    <button class="rounded border border-red-800 px-2 py-1 text-xs text-red-300" type="submit">Desactivar</button>
+                  </form>
+                </td>
+              </tr>
+            {% empty %}
+              <tr><td colspan="7" class="py-3 text-neutral-500">Sin animales activos.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="grid gap-4 xl:grid-cols-2">
+    <article class="rounded border border-neutral-800 bg-neutral-900">
+      <header class="border-b border-neutral-800 px-4 py-3">
+        <h2 class="font-semibold">Insumos</h2>
+      </header>
+      <div class="grid gap-4 p-4">
+        <form
+          class="grid gap-3 md:grid-cols-2"
+          hx-post="{% if input_edit_id %}{% url 'dashboard:input_update' input_edit_id %}{% else %}{% url 'dashboard:input_create' %}{% endif %}"
+          hx-target="#master-data-content"
+          hx-swap="outerHTML"
+        >
+          {% csrf_token %}
+          {% include "dashboard/_form_fields.html" with form=input_form %}
+          <div class="flex gap-2 md:col-span-2">
+            <button class="rounded bg-emerald-500 px-4 py-2 text-sm font-semibold text-neutral-950 hover:bg-emerald-400" type="submit">
+              {% if input_edit_id %}Actualizar insumo{% else %}Crear insumo{% endif %}
+            </button>
+            {% if input_edit_id %}
+              <button class="rounded border border-neutral-700 px-4 py-2 text-sm text-neutral-300" type="button" hx-get="{% url 'dashboard:master_data' %}" hx-target="#master-data-content" hx-swap="outerHTML">Cancelar</button>
+            {% endif %}
+          </div>
+        </form>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm">
+            <thead class="text-xs uppercase text-neutral-500">
+              <tr>
+                <th class="py-2">SKU</th>
+                <th>Nombre</th>
+                <th>Categoria</th>
+                <th>Costo</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-neutral-800">
+              {% for input in inputs %}
+                <tr>
+                  <td class="py-2 font-mono text-neutral-300">{{ input.sku|default:"-" }}</td>
+                  <td>{{ input.name }}</td>
+                  <td>{{ input.get_category_display }}</td>
+                  <td>$ {{ input.default_unit_cost|floatformat:4 }}</td>
+                  <td class="flex justify-end gap-2 py-2">
+                    <button class="rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-300" type="button" hx-get="{% url 'dashboard:input_edit' input.id %}" hx-target="#master-data-content" hx-swap="outerHTML">Editar</button>
+                    <form hx-post="{% url 'dashboard:input_deactivate' input.id %}" hx-target="#master-data-content" hx-swap="outerHTML" hx-confirm="Desactivar insumo?">
+                      {% csrf_token %}
+                      <button class="rounded border border-red-800 px-2 py-1 text-xs text-red-300" type="submit">Desactivar</button>
+                    </form>
+                  </td>
+                </tr>
+              {% empty %}
+                <tr><td colspan="5" class="py-3 text-neutral-500">Sin insumos activos.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </article>
+
+    <article class="rounded border border-neutral-800 bg-neutral-900">
+      <header class="border-b border-neutral-800 px-4 py-3">
+        <h2 class="font-semibold">Stock Inicial</h2>
+      </header>
+      <div class="grid gap-4 p-4">
+        <form
+          class="grid gap-3 md:grid-cols-2"
+          hx-post="{% if stock_lot_edit_id %}{% url 'dashboard:stock_lot_update' stock_lot_edit_id %}{% else %}{% url 'dashboard:stock_lot_create' %}{% endif %}"
+          hx-target="#master-data-content"
+          hx-swap="outerHTML"
+        >
+          {% csrf_token %}
+          {% include "dashboard/_form_fields.html" with form=stock_lot_form %}
+          <div class="flex gap-2 md:col-span-2">
+            <button class="rounded bg-emerald-500 px-4 py-2 text-sm font-semibold text-neutral-950 hover:bg-emerald-400" type="submit">
+              {% if stock_lot_edit_id %}Actualizar stock{% else %}Crear stock{% endif %}
+            </button>
+            {% if stock_lot_edit_id %}
+              <button class="rounded border border-neutral-700 px-4 py-2 text-sm text-neutral-300" type="button" hx-get="{% url 'dashboard:master_data' %}" hx-target="#master-data-content" hx-swap="outerHTML">Cancelar</button>
+            {% endif %}
+          </div>
+        </form>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm">
+            <thead class="text-xs uppercase text-neutral-500">
+              <tr>
+                <th class="py-2">Insumo</th>
+                <th>Hacienda</th>
+                <th>Existencia</th>
+                <th>Costo</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-neutral-800">
+              {% for stock_lot in stock_lots %}
+                <tr>
+                  <td class="py-2">{{ stock_lot.input.name }}</td>
+                  <td>{{ stock_lot.farm.code }}</td>
+                  <td>{{ stock_lot.quantity_on_hand|floatformat:3 }} {{ stock_lot.input.get_unit_display }}</td>
+                  <td>$ {{ stock_lot.unit_cost|floatformat:4 }}</td>
+                  <td class="flex justify-end gap-2 py-2">
+                    <button class="rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-300" type="button" hx-get="{% url 'dashboard:stock_lot_edit' stock_lot.id %}" hx-target="#master-data-content" hx-swap="outerHTML">Editar</button>
+                    <form hx-post="{% url 'dashboard:stock_lot_deactivate' stock_lot.id %}" hx-target="#master-data-content" hx-swap="outerHTML" hx-confirm="Desactivar stock?">
+                      {% csrf_token %}
+                      <button class="rounded border border-red-800 px-2 py-1 text-xs text-red-300" type="submit">Desactivar</button>
+                    </form>
+                  </td>
+                </tr>
+              {% empty %}
+                <tr><td colspan="5" class="py-3 text-neutral-500">Sin stock activo.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </article>
+  </section>
+
+  <section class="grid gap-4 xl:grid-cols-2">
+    <article class="rounded border border-neutral-800 bg-neutral-900">
+      <header class="border-b border-neutral-800 px-4 py-3">
+        <h2 class="font-semibold">Recepcion de insumos</h2>
+        <p class="mt-1 text-xs text-neutral-500">La compra entra a inventario; el costo llega al P&amp;L al consumirse.</p>
+      </header>
+      <form
+        class="grid gap-3 p-4 md:grid-cols-2"
+        hx-post="{% url 'dashboard:inventory_receive' %}"
+        hx-target="#master-data-content"
+        hx-swap="outerHTML"
+      >
+        {% csrf_token %}
+        {% include "dashboard/_form_fields.html" with form=receipt_form %}
+        <div class="md:col-span-2">
+          <button class="rounded bg-emerald-500 px-4 py-2 text-sm font-semibold text-neutral-950 hover:bg-emerald-400" type="submit">Registrar recepcion</button>
+        </div>
+      </form>
+    </article>
+
+    <article class="rounded border border-neutral-800 bg-neutral-900">
+      <header class="border-b border-neutral-800 px-4 py-3">
+        <h2 class="font-semibold">Ajuste de inventario</h2>
+        <p class="mt-1 text-xs text-neutral-500">Un faltante se reconoce como merma en el P&amp;L; un sobrante solo repone stock.</p>
+      </header>
+      <form
+        class="grid gap-3 p-4 md:grid-cols-2"
+        hx-post="{% url 'dashboard:inventory_adjust' %}"
+        hx-target="#master-data-content"
+        hx-swap="outerHTML"
+      >
+        {% csrf_token %}
+        {% include "dashboard/_form_fields.html" with form=adjustment_form %}
+        <div class="md:col-span-2">
+          <button class="rounded bg-emerald-500 px-4 py-2 text-sm font-semibold text-neutral-950 hover:bg-emerald-400" type="submit">Aplicar ajuste</button>
+        </div>
+      </form>
+    </article>
+  </section>
+
+  <section class="rounded border border-neutral-800 bg-neutral-900">
+    <header class="border-b border-neutral-800 px-4 py-3">
+      <h2 class="font-semibold">Kardex de movimientos</h2>
+    </header>
+    <div class="overflow-x-auto p-4">
+      <table class="w-full min-w-[860px] text-left text-sm">
+        <thead class="text-xs uppercase text-neutral-500">
+          <tr>
+            <th class="py-2">Fecha</th>
+            <th>Tipo</th>
+            <th>Insumo</th>
+            <th>Destino</th>
+            <th class="text-right">Cantidad</th>
+            <th class="text-right">Costo unit.</th>
+            <th class="text-right">Total</th>
+            <th>Evento</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-neutral-800">
+          {% for movement in movements %}
+            <tr class="text-neutral-200">
+              <td class="py-2">{{ movement.occurred_at|date:"Y-m-d H:i" }}</td>
+              <td>{{ movement.get_movement_type_display }}</td>
+              <td>{{ movement.input.name }}</td>
+              <td>{% if movement.animal %}{{ movement.animal.tag }}{% elif movement.group %}{{ movement.group.name }}{% else %}Hacienda{% endif %}</td>
+              <td class="text-right">{{ movement.quantity|floatformat:3 }} {{ movement.input.get_unit_display }}</td>
+              <td class="text-right">$ {{ movement.unit_cost|floatformat:4 }}</td>
+              <td class="text-right">$ {{ movement.total_cost|floatformat:2 }}</td>
+              <td class="font-mono text-[11px] text-neutral-500">{{ movement.source_event_id|default:"-" }}</td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="8" class="py-3 text-neutral-500">Sin movimientos de bodega.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>

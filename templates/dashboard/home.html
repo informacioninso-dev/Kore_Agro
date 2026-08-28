@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block title %}KORE AGRO - Dashboard{% endblock %}
+
+{% block content %}
+  <section class="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+    <div>
+      <h1 class="text-2xl font-semibold text-white">Control y Costo Real</h1>
+      <p class="mt-1 text-sm text-neutral-400">P&L operativo, alertas sanitarias y agenda reproductiva.</p>
+    </div>
+    <form class="grid gap-2 sm:grid-cols-4" hx-get="{% url 'dashboard:pnl_fragment' %}" hx-target="#pnl-panel" hx-swap="outerHTML">
+      <select name="farm" class="rounded border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-white">
+        {% for farm in farms %}
+          <option value="{{ farm.id }}" {% if selected_farm.id == farm.id %}selected{% endif %}>{{ farm.name }}</option>
+        {% endfor %}
+      </select>
+      <input name="start" value="{{ start_date|date:'Y-m-d' }}" type="date" class="rounded border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-white">
+      <input name="end" value="{{ end_date|date:'Y-m-d' }}" type="date" class="rounded border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-white">
+      <button class="rounded bg-emerald-500 px-4 py-2 text-sm font-semibold text-neutral-950 hover:bg-emerald-400">Actualizar</button>
+    </form>
+  </section>
+
+  {% include "dashboard/_pnl.html" %}
+  {% include "dashboard/_actions.html" %}
+{% endblock %}
+

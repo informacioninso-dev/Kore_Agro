@@ -1,0 +1,10 @@
+{
+  "name": "KORE AGRO Campo",
+  "short_name": "KORE Campo",
+  "start_url": "/field/",
+  "display": "standalone",
+  "background_color": "#020617",
+  "theme_color": "#020617",
+  "icons": []
+}
+

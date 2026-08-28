@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+
+{% block title %}KORE AGRO - Datos MVP{% endblock %}
+
+{% block content %}
+  <section class="mb-6 flex flex-col gap-2">
+    <h1 class="text-2xl font-semibold text-white">Datos MVP</h1>
+    <p class="text-sm text-neutral-400">Hacienda, hato, bodega y stock inicial para operar Campo y P&L.</p>
+  </section>
+
+  {% include "dashboard/_master_data_content.html" %}
+{% endblock %}
+

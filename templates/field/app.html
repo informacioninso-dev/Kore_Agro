@@ -1,0 +1,144 @@
+{% load static %}
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#020617">
+    <link rel="manifest" href="{{ manifest_url }}">
+    <link rel="stylesheet" href="{{ app_css_url }}">
+    <title>KORE AGRO Campo</title>
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <span class="brand">Binnso</span>
+        <h1>KORE AGRO Campo</h1>
+      </div>
+      <button id="syncNow" class="iconButton" type="button" aria-label="Sincronizar">
+        <span class="syncIcon">↻</span>
+      </button>
+    </header>
+
+    <main class="shell">
+      <section class="statusPanel">
+        <div>
+          <span class="label">Red</span>
+          <strong id="networkState">...</strong>
+        </div>
+        <div>
+          <span class="label">Cola</span>
+          <strong id="queueCount">0</strong>
+        </div>
+        <div>
+          <span class="label">Ultimo sync</span>
+          <strong id="lastSync">Sin datos</strong>
+        </div>
+      </section>
+
+      <nav class="tabs" aria-label="Captura">
+        <button class="tab active" data-panel="milkPanel" type="button">Ordeno</button>
+        <button class="tab" data-panel="reproPanel" type="button">Repro</button>
+        <button class="tab" data-panel="healthPanel" type="button">Sanidad</button>
+        <button class="tab" data-panel="inventoryPanel" type="button">Bodega</button>
+      </nav>
+
+      <section id="milkPanel" class="panel active">
+        <form id="milkForm" class="form">
+          <label>Hacienda<select name="farm_id" data-source="farms" required></select></label>
+          <label>Tipo
+            <select name="target_type">
+              <option value="animal">Vaca</option>
+              <option value="group">Lote</option>
+            </select>
+          </label>
+          <label class="targetAnimal">Animal<select name="animal_id" data-source="animals"></select></label>
+          <label class="targetGroup hidden">Lote<select name="group_id" data-source="groups"></select></label>
+          <label>Litros<input name="liters" inputmode="decimal" type="number" step="0.001" min="0.001" required></label>
+          <label>Jornada
+            <select name="shift">
+              <option value="total_day">Total dia</option>
+              <option value="morning">Manana</option>
+              <option value="afternoon">Tarde</option>
+              <option value="night">Noche</option>
+            </select>
+          </label>
+          <button class="primary" type="submit">Guardar ordeno</button>
+        </form>
+      </section>
+
+      <section id="reproPanel" class="panel">
+        <form id="reproForm" class="form">
+          <label>Hacienda<select name="farm_id" data-source="farms" required></select></label>
+          <label>Animal<select name="animal_id" data-source="animals" required></select></label>
+          <label>Evento
+            <select name="event_kind">
+              <option value="reproduction.heat_recorded">Celo</option>
+              <option value="reproduction.service_recorded">Inseminacion/Monta</option>
+              <option value="reproduction.calving_recorded">Parto</option>
+              <option value="reproduction.dry_off_recorded">Secado</option>
+            </select>
+          </label>
+          <label>Fecha<input name="occurred_on" type="date" required></label>
+          <label>Servicio
+            <select name="service_type">
+              <option value="">N/A</option>
+              <option value="ai">IA</option>
+              <option value="natural">Monta</option>
+            </select>
+          </label>
+          <label>Padre / pajuela<input name="sire_identifier" autocomplete="off"></label>
+          <label>Arete cria<input name="calf_tag" autocomplete="off"></label>
+          <label>Sexo cria
+            <select name="calf_sex">
+              <option value="">N/A</option>
+              <option value="female">Hembra</option>
+              <option value="male">Macho</option>
+            </select>
+          </label>
+          <button class="primary" type="submit">Guardar evento</button>
+        </form>
+      </section>
+
+      <section id="healthPanel" class="panel">
+        <form id="healthForm" class="form">
+          <label>Hacienda<select name="farm_id" data-source="farms" required></select></label>
+          <label>Animal<select name="animal_id" data-source="animals" required></select></label>
+          <label>Diagnostico<input name="diagnosis" required autocomplete="off"></label>
+          <label>Insumo<select name="input_id" data-source="inputs"></select></label>
+          <label>Cantidad<input name="quantity" inputmode="decimal" type="number" step="0.001" min="0"></label>
+          <label>Dosis<input name="dosage" autocomplete="off"></label>
+          <label>Retiro leche horas<input name="milk_withdrawal_hours" inputmode="numeric" type="number" min="0"></label>
+          <button class="danger" type="submit">Guardar tratamiento</button>
+        </form>
+      </section>
+
+      <section id="inventoryPanel" class="panel">
+        <form id="inventoryForm" class="form">
+          <label>Hacienda<select name="farm_id" data-source="farms" required></select></label>
+          <label>Insumo<select name="input_id" data-source="inputs" required></select></label>
+          <label>Cantidad<input name="quantity" inputmode="decimal" type="number" step="0.001" min="0.001" required></label>
+          <label>Animal opcional<select name="animal_id" data-source="animals"></select></label>
+          <label>Lote opcional<select name="group_id" data-source="groups"></select></label>
+          <label>Nota<input name="notes" autocomplete="off"></label>
+          <button class="primary" type="submit">Registrar consumo</button>
+        </form>
+      </section>
+
+      <section class="queuePanel">
+        <h2>Eventos pendientes</h2>
+        <ol id="queueList"></ol>
+      </section>
+    </main>
+
+    <script>
+      window.KORE_FIELD_CONFIG = {
+        bootstrapUrl: "/api/field/bootstrap",
+        syncUrl: "/api/sync/events",
+        serviceWorkerUrl: "{{ service_worker_url }}"
+      };
+    </script>
+    <script src="{{ app_js_url }}" defer></script>
+  </body>
+</html>
+

@@ -1,0 +1,58 @@
+<section id="action-panel" class="grid gap-4 lg:grid-cols-2" hx-get="{% url 'dashboard:action_list_fragment' %}" hx-trigger="every 120s" hx-swap="outerHTML">
+  <article class="rounded border border-neutral-800 bg-neutral-900">
+    <header class="border-b border-neutral-800 px-4 py-3">
+      <h2 class="font-semibold">Reproduccion</h2>
+    </header>
+    <div class="grid gap-3 p-4 md:grid-cols-2">
+      <div>
+        <h3 class="mb-2 text-sm font-medium text-neutral-300">Secar hoy</h3>
+        <ul class="space-y-2 text-sm">
+          {% for animal in dry_off %}
+            <li class="rounded border border-neutral-800 bg-neutral-950 px-3 py-2">{{ animal.tag }} · parto {{ animal.expected_calving_date|date:'Y-m-d' }}</li>
+          {% empty %}
+            <li class="text-neutral-500">Sin pendientes.</li>
+          {% endfor %}
+        </ul>
+      </div>
+      <div>
+        <h3 class="mb-2 text-sm font-medium text-neutral-300">Chequeo de prenez</h3>
+        <ul class="space-y-2 text-sm">
+          {% for animal in pregnancy_checks %}
+            <li class="rounded border border-neutral-800 bg-neutral-950 px-3 py-2">{{ animal.tag }} · servicio {{ animal.last_service_date|date:'Y-m-d' }}</li>
+          {% empty %}
+            <li class="text-neutral-500">Sin pendientes.</li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </article>
+
+  <article class="rounded border border-neutral-800 bg-neutral-900">
+    <header class="border-b border-neutral-800 px-4 py-3">
+      <h2 class="font-semibold">Sanidad</h2>
+    </header>
+    <div class="grid gap-3 p-4 md:grid-cols-2">
+      <div>
+        <h3 class="mb-2 text-sm font-medium text-neutral-300">Retiro de leche</h3>
+        <ul class="space-y-2 text-sm">
+          {% for withdrawal in withdrawals %}
+            <li class="rounded border border-red-800 bg-red-950 px-3 py-2">{{ withdrawal.animal.tag }} · hasta {{ withdrawal.ends_at|date:'Y-m-d H:i' }}</li>
+          {% empty %}
+            <li class="text-neutral-500">Sin retiros activos.</li>
+          {% endfor %}
+        </ul>
+      </div>
+      <div>
+        <h3 class="mb-2 text-sm font-medium text-neutral-300">Tratamientos abiertos</h3>
+        <ul class="space-y-2 text-sm">
+          {% for treatment in open_treatments %}
+            <li class="rounded border border-neutral-800 bg-neutral-950 px-3 py-2">{{ treatment.animal.tag }} · {{ treatment.diagnosis }}</li>
+          {% empty %}
+            <li class="text-neutral-500">Sin tratamientos abiertos.</li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </article>
+</section>
+
