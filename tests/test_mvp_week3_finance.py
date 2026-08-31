@@ -3,7 +3,6 @@ from decimal import Decimal
 from uuid import uuid4
 
 import pytest
-from django.test import Client as HttpClient
 from django.utils import timezone
 from django_tenants.utils import tenant_context
 
@@ -19,7 +18,7 @@ from apps.inventory.services import consume_input
 from apps.milk.models import MilkingSession
 from apps.milk.services import MilkRecord, register_milking
 from apps.sync.services import ActionEventMessage, process_action_event
-from tests.factories import create_tenant, seed_farm
+from tests.factories import authenticated_manager_client, create_tenant, seed_farm
 
 
 def _action_message(*, farm, event_type: str, payload: dict, sequence: int = 1):
@@ -238,7 +237,7 @@ def test_finance_dashboard_renders_for_tenant():
         )
         farm_id = farm.id
 
-    client = HttpClient(HTTP_HOST=f"{tenant.schema_name}.localhost")
+    client = authenticated_manager_client(tenant)
 
     response = client.get("/finanzas/")
     fragment = client.get(

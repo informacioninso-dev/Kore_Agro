@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block title %}KORE AGRO - Cumplimiento{% endblock %}
+
+{% block content %}
+<section class="space-y-6">
+  <div class="kore-page-heading">
+    <div class="eyebrow">Documentos de la finca</div>
+    <h1>Guias y documentos</h1>
+    <p>Prepara facturas y guias, revisa el borrador y envialo cuando este listo.</p>
+  </div>
+
+  {% if message %}<div class="rounded border border-emerald-800 bg-emerald-950 px-4 py-3 text-emerald-100">{{ message }}</div>{% endif %}
+  {% if error %}<div class="rounded border border-rose-800 bg-rose-950 px-4 py-3 text-rose-100">{{ error }}</div>{% endif %}
+
+  <div class="grid gap-6 xl:grid-cols-2">
+    <section class="rounded border border-neutral-800 bg-neutral-900 p-5">
+      <h2 class="text-lg font-semibold">Factura de venta de leche</h2>
+      <form method="post" action="{% url 'billing:invoice_create' %}" class="mt-4 grid gap-3 md:grid-cols-2">
+        {% csrf_token %}
+        {% for field in invoice_form %}
+          <label class="text-sm text-neutral-300">{{ field.label }}{{ field }}{% for error in field.errors %}<span class="block text-rose-400">{{ error }}</span>{% endfor %}</label>
+        {% endfor %}
+        <button class="rounded bg-emerald-500 px-4 py-2 font-semibold text-neutral-950 md:col-span-2" type="submit">Crear borrador</button>
+      </form>
+    </section>
+
+    <section class="rounded border border-neutral-800 bg-neutral-900 p-5">
+      <h2 class="text-lg font-semibold">Guia de movilizacion</h2>
+      <form method="post" action="{% url 'billing:guide_create' %}" class="mt-4 grid gap-3 md:grid-cols-2">
+        {% csrf_token %}
+        {% for field in guide_form %}
+          <label class="text-sm text-neutral-300 {% if field.name == 'animals' %}md:col-span-2{% endif %}">{{ field.label }}{{ field }}{% for error in field.errors %}<span class="block text-rose-400">{{ error }}</span>{% endfor %}</label>
+        {% endfor %}
+        <button class="rounded border border-emerald-600 px-4 py-2 font-semibold text-emerald-300 md:col-span-2" type="submit">Crear guia borrador</button>
+      </form>
+    </section>
+  </div>
+
+  <section class="rounded border border-neutral-800 bg-neutral-900 p-5">
+    <h2 class="text-lg font-semibold">Facturas recientes</h2>
+    <div class="mt-4 overflow-x-auto"><table class="w-full text-left text-sm"><thead class="text-neutral-500"><tr><th>Fecha</th><th>Comprador</th><th>Periodo</th><th class="text-right">Total</th><th>Estado</th><th></th></tr></thead><tbody>
+      {% for invoice in invoices %}<tr class="border-t border-neutral-800"><td class="py-3">{{ invoice.issue_date }}</td><td>{{ invoice.buyer_name }}</td><td>{{ invoice.period_start }} a {{ invoice.period_end }}</td><td class="text-right">$ {{ invoice.total|floatformat:2 }}</td><td>{{ invoice.get_status_display }}</td><td>{% if invoice.status == 'draft' %}<form method="post" action="{% url 'billing:invoice_submit' invoice.id %}">{% csrf_token %}<button class="text-emerald-300">Enviar SRI</button></form>{% endif %}</td></tr>{% empty %}<tr><td class="py-3 text-neutral-500" colspan="6">Aun no hay facturas.</td></tr>{% endfor %}
+    </tbody></table></div>
+  </section>
+
+  <section class="rounded border border-neutral-800 bg-neutral-900 p-5">
+    <h2 class="text-lg font-semibold">Guias recientes</h2>
+    <div class="mt-4 overflow-x-auto"><table class="w-full text-left text-sm"><thead class="text-neutral-500"><tr><th>Fecha</th><th>Ruta</th><th>Animales</th><th>Estado</th></tr></thead><tbody>
+      {% for guide in guides %}<tr class="border-t border-neutral-800"><td class="py-3">{{ guide.issue_date }}</td><td>{{ guide.origin }} a {{ guide.destination }}</td><td>{% for animal in guide.animals.all %}{{ animal.tag }}{% if not forloop.last %}, {% endif %}{% endfor %}</td><td>{{ guide.get_status_display }}</td></tr>{% empty %}<tr><td class="py-3 text-neutral-500" colspan="4">Aun no hay guias.</td></tr>{% endfor %}
+    </tbody></table></div>
+  </section>
+</section>
+{% endblock %}

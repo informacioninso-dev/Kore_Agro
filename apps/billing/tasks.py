@@ -1,6 +1,7 @@
 from celery import shared_task
 
 from .models import MilkInvoice
+from .services import request_sri_submission
 
 
 @shared_task(
@@ -11,9 +12,5 @@ from .models import MilkInvoice
 )
 def submit_milk_invoice_to_sri(self, invoice_id: str):
     invoice = MilkInvoice.objects.get(id=invoice_id)
-    invoice.sri_response = {
-        "status": "pending_adapter",
-        "detail": "SRI adapter will sign XML and submit in MVP week 7.",
-    }
-    invoice.save(update_fields=["sri_response", "updated_at"])
+    request_sri_submission(invoice)
     return {"invoice_id": str(invoice.id), "status": invoice.status}

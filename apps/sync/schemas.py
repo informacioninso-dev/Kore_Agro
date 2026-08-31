@@ -25,6 +25,8 @@ class EventAckSchema(Schema):
     event_id: UUID
     status: str
     detail: str = ""
+    retryable: bool = False
+    resolution: str = ""
 
 
 class ActionQueueResponseSchema(Schema):

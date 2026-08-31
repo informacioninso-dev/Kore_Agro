@@ -1,0 +1,10 @@
+.git/
+.venv/
+.env
+.env.production
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+staticfiles/
+*.log

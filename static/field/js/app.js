@@ -6,7 +6,7 @@
   const config = window.KORE_FIELD_CONFIG;
 
   let db;
-  let masters = { farms: [], groups: [], animals: [], inputs: [] };
+  let masters = { farms: [], groups: [], animals: [], inputs: [], today_actions: [] };
 
   function openDb() {
     return new Promise((resolve, reject) => {
@@ -81,7 +81,10 @@
       client_sequence: nextSequence(),
       schema_version: 1,
       status: "pending",
-      detail: ""
+      detail: "",
+      resolution: "",
+      retryable: false,
+      attempts: 0
     };
     await put(EVENT_STORE, event);
     await renderQueue();
@@ -93,7 +96,7 @@
 
   async function renderQueue() {
     const events = await getAll(EVENT_STORE);
-    const pending = events.filter((event) => event.status !== "acked");
+    const pending = events.filter((event) => event.status !== "acked" && event.status !== "discarded");
     document.getElementById("queueCount").textContent = String(pending.length);
     const list = document.getElementById("queueList");
     list.innerHTML = "";
@@ -102,7 +105,28 @@
       .slice(0, 20)
       .forEach((event) => {
         const item = document.createElement("li");
-        item.textContent = `${event.client_sequence} - ${event.event_type} - ${event.status}`;
+        const label = document.createElement("span");
+        label.textContent = `${event.client_sequence} - ${event.event_type} - ${event.status}`;
+        item.appendChild(label);
+        if (event.detail) {
+          const detail = document.createElement("small");
+          detail.textContent = `${event.detail} ${event.resolution || ""}`.trim();
+          item.appendChild(detail);
+        }
+        if (event.status !== "pending") {
+          const retry = document.createElement("button");
+          retry.type = "button";
+          retry.textContent = "Reintentar";
+          retry.disabled = event.status === "conflict" || event.retryable === false;
+          retry.addEventListener("click", () => retryEvent(event.event_id));
+          item.appendChild(retry);
+
+          const discard = document.createElement("button");
+          discard.type = "button";
+          discard.textContent = "Descartar";
+          discard.addEventListener("click", () => discardEvent(event.event_id));
+          item.appendChild(discard);
+        }
         list.appendChild(item);
       });
   }
@@ -121,14 +145,24 @@
       return;
     }
 
-    const response = await fetch(config.syncUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ events })
-    });
+    let response;
+    try {
+      response = await fetch(config.syncUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Kore-Device-ID": deviceId() },
+        body: JSON.stringify({ events })
+      });
+    } catch (error) {
+      await markTransportFailure(events, error.message || "No se pudo conectar al servidor.");
+      resetLastSync("Sin conexión con el servidor");
+      await renderQueue();
+      return;
+    }
 
     if (!response.ok) {
+      await markTransportFailure(events, `Error HTTP ${response.status}`);
       resetLastSync(`Error HTTP ${response.status}`);
+      await renderQueue();
       return;
     }
 
@@ -139,8 +173,11 @@
       } else {
         const event = await get(EVENT_STORE, result.event_id);
         if (event) {
-          event.status = "failed";
+          event.status = result.status || "failed";
           event.detail = result.detail || "";
+          event.resolution = result.resolution || "";
+          event.retryable = Boolean(result.retryable);
+          event.attempts = Number(event.attempts || 0) + 1;
           await put(EVENT_STORE, event);
         }
       }
@@ -149,9 +186,58 @@
     await renderQueue();
   }
 
+  async function markTransportFailure(events, detail) {
+    for (const queued of events) {
+      const event = await get(EVENT_STORE, queued.event_id);
+      if (event) {
+        event.status = "pending";
+        event.detail = detail;
+        event.resolution = "Reintenta cuando se restablezca la conexión.";
+        event.retryable = true;
+        event.attempts = Number(event.attempts || 0) + 1;
+        await put(EVENT_STORE, event);
+      }
+    }
+  }
+
+  async function retryEvent(eventId) {
+    const event = await get(EVENT_STORE, eventId);
+    if (!event || event.status === "conflict") return;
+    event.status = "pending";
+    event.detail = "";
+    event.resolution = "";
+    await put(EVENT_STORE, event);
+    await renderQueue();
+    syncQueue();
+  }
+
+  async function discardEvent(eventId) {
+    const event = await get(EVENT_STORE, eventId);
+    if (!event || !window.confirm("¿Descartar este evento local? No se enviará al servidor.")) return;
+    event.status = "discarded";
+    await put(EVENT_STORE, event);
+    await renderQueue();
+  }
+
+  async function retryPendingEvents() {
+    const events = await getAll(EVENT_STORE);
+    for (const event of events) {
+      if (event.retryable && event.status !== "conflict") {
+        event.status = "pending";
+        event.detail = "";
+        event.resolution = "";
+        await put(EVENT_STORE, event);
+      }
+    }
+    await renderQueue();
+    syncQueue();
+  }
+
   async function loadBootstrap() {
     try {
-      const response = await fetch(config.bootstrapUrl);
+      const response = await fetch(config.bootstrapUrl, {
+        headers: { "X-Kore-Device-ID": deviceId() }
+      });
       if (!response.ok) {
         throw new Error(`Bootstrap HTTP ${response.status}`);
       }
@@ -164,20 +250,86 @@
       }
     }
     populateSelects();
+    renderTodayActions();
   }
 
   function populateSelects() {
     document.querySelectorAll("select[data-source]").forEach((select) => {
-      const source = select.dataset.source;
-      const required = select.hasAttribute("required");
-      select.innerHTML = required ? "" : '<option value="">N/A</option>';
-      (masters[source] || []).forEach((item) => {
-        const option = document.createElement("option");
-        option.value = item.id;
-        option.textContent = labelFor(source, item);
-        select.appendChild(option);
-      });
+      if (select.dataset.source === "farms") populateSelect(select);
     });
+    restoreSelectedFarms();
+    document.querySelectorAll("select[data-source]").forEach((select) => {
+      if (select.dataset.source !== "farms") populateSelect(select);
+    });
+  }
+
+  function populateSelect(select) {
+    const source = select.dataset.source;
+    const previousValue = select.value;
+    const required = select.hasAttribute("required");
+    const form = select.closest("form");
+    const farmId = form && form.elements.farm_id ? form.elements.farm_id.value : "";
+    let items = masters[source] || [];
+    if ((source === "animals" || source === "groups") && farmId) {
+      items = items.filter((item) => item.farm_id === farmId);
+    }
+    select.innerHTML = required ? "" : '<option value="">Sin asignar</option>';
+    items.forEach((item) => {
+      const option = document.createElement("option");
+      option.value = item.id;
+      option.textContent = labelFor(source, item);
+      select.appendChild(option);
+    });
+    if (items.some((item) => item.id === previousValue)) select.value = previousValue;
+  }
+
+  function restoreSelectedFarms() {
+    const rememberedFarm = localStorage.getItem("kore_selected_farm");
+    const defaultFarm = masters.farms.some((farm) => farm.id === rememberedFarm)
+      ? rememberedFarm
+      : (masters.farms[0] || {}).id;
+    document.querySelectorAll("select[data-source='farms']").forEach((select) => {
+      select.value = defaultFarm || "";
+    });
+  }
+
+  function refreshFormSources(form) {
+    form.querySelectorAll("select[data-source='animals'], select[data-source='groups']").forEach(populateSelect);
+  }
+
+  function renderTodayActions() {
+    const container = document.getElementById("todayActions");
+    if (!container) return;
+    container.innerHTML = "";
+    const actions = masters.today_actions || [];
+    if (!actions.length) {
+      container.innerHTML = '<p class="emptyState">Todo al día. No hay alertas urgentes para esta jornada.</p>';
+      return;
+    }
+    actions.forEach((action) => {
+      const card = document.createElement("button");
+      card.type = "button";
+      card.className = `attentionCard ${action.priority || "normal"}`;
+      const symbol = document.createElement("span");
+      symbol.className = "attentionSymbol";
+      symbol.textContent = symbolForAction(action.kind);
+      const copy = document.createElement("span");
+      const title = document.createElement("strong");
+      title.textContent = action.title;
+      const detail = document.createElement("small");
+      detail.textContent = action.detail;
+      copy.append(title, detail);
+      const arrow = document.createElement("span");
+      arrow.className = "attentionArrow";
+      arrow.textContent = ">";
+      card.append(symbol, copy, arrow);
+      card.addEventListener("click", () => openPanel(action.panel, action.animal_id));
+      container.appendChild(card);
+    });
+  }
+
+  function symbolForAction(kind) {
+    return { withdrawal: "!", dry_off: "◐", pregnancy: "?", treatment: "+" }[kind] || "•";
   }
 
   function labelFor(source, item) {
@@ -188,7 +340,14 @@
       return item.name;
     }
     if (source === "animals") {
-      return `${item.tag} - ${item.status}`;
+      const statuses = {
+        calf: "ternera",
+        heifer: "vientre",
+        lactating: "en producción",
+        dry: "seca",
+        pregnant: "preñada"
+      };
+      return `${item.tag}${item.name ? ` · ${item.name}` : ""} - ${statuses[item.status] || item.status}`;
     }
     if (source === "inputs") {
       return `${item.name} - ${item.unit}`;
@@ -223,8 +382,7 @@
           records: [record]
         })
       );
-      event.currentTarget.reset();
-      setTodayDefaults();
+      resetFieldForm(event.currentTarget);
     });
 
     document.getElementById("reproForm").addEventListener("submit", (event) => {
@@ -244,8 +402,7 @@
           birth_date: data.event_kind === "reproduction.calving_recorded" ? data.occurred_on : ""
         })
       );
-      event.currentTarget.reset();
-      setTodayDefaults();
+      resetFieldForm(event.currentTarget);
     });
 
     document.getElementById("healthForm").addEventListener("submit", (event) => {
@@ -263,8 +420,7 @@
           milk_withdrawal_hours: data.milk_withdrawal_hours
         })
       );
-      event.currentTarget.reset();
-      setTodayDefaults();
+      resetFieldForm(event.currentTarget);
     });
 
     document.getElementById("inventoryForm").addEventListener("submit", (event) => {
@@ -281,8 +437,7 @@
           notes: data.notes
         })
       );
-      event.currentTarget.reset();
-      setTodayDefaults();
+      resetFieldForm(event.currentTarget);
     });
 
     document.querySelector("select[name='target_type']").addEventListener("change", (event) => {
@@ -290,23 +445,71 @@
       document.querySelector(".targetAnimal").classList.toggle("hidden", isGroup);
       document.querySelector(".targetGroup").classList.toggle("hidden", !isGroup);
     });
+
+    document.querySelectorAll("select[data-source='farms']").forEach((select) => {
+      select.addEventListener("change", (event) => {
+        localStorage.setItem("kore_selected_farm", event.target.value);
+        document.querySelectorAll("select[data-source='farms']").forEach((farmSelect) => {
+          farmSelect.value = event.target.value;
+          refreshFormSources(farmSelect.closest("form"));
+        });
+      });
+    });
   }
 
   function bindTabs() {
     document.querySelectorAll(".tab").forEach((tab) => {
-      tab.addEventListener("click", () => {
-        document.querySelectorAll(".tab").forEach((item) => item.classList.remove("active"));
-        document.querySelectorAll(".panel").forEach((panel) => panel.classList.remove("active"));
-        tab.classList.add("active");
-        document.getElementById(tab.dataset.panel).classList.add("active");
-      });
+      tab.addEventListener("click", () => openPanel(tab.dataset.panel));
     });
+  }
+
+  function bindQuickActions() {
+    document.querySelectorAll("[data-open-panel]").forEach((button) => {
+      button.addEventListener("click", () => openPanel(button.dataset.openPanel, null, button.dataset.focus));
+    });
+  }
+
+  function openPanel(panelId, animalId = null, focusSelector = null) {
+    document.querySelectorAll(".tab").forEach((item) => {
+      item.classList.toggle("active", item.dataset.panel === panelId);
+    });
+    document.querySelectorAll(".panel").forEach((panel) => {
+      panel.classList.toggle("active", panel.id === panelId);
+    });
+    const panel = document.getElementById(panelId);
+    if (!panel) return;
+    if (animalId) {
+      const animalSelect = panel.querySelector("select[name='animal_id']");
+      if (animalSelect && [...animalSelect.options].some((option) => option.value === animalId)) {
+        animalSelect.value = animalId;
+      }
+    }
+    panel.scrollIntoView({ behavior: "smooth", block: "start" });
+    const target = focusSelector ? document.querySelector(focusSelector) : null;
+    if (target) setTimeout(() => target.focus(), 350);
+  }
+
+  function resetFieldForm(form) {
+    form.reset();
+    setTodayDefaults();
+    restoreSelectedFarms();
+    refreshFormSources(form);
   }
 
   function setTodayDefaults() {
     document.querySelectorAll("input[type='date']").forEach((input) => {
       input.value = todayIso();
     });
+  }
+
+  function setTodayLabel() {
+    const label = document.getElementById("todayLabel");
+    if (!label) return;
+    label.textContent = new Intl.DateTimeFormat("es-EC", {
+      weekday: "long",
+      day: "numeric",
+      month: "long"
+    }).format(new Date());
   }
 
   function todayIso() {
@@ -329,14 +532,17 @@
 
   async function init() {
     db = await openDb();
+    setTodayLabel();
     setTodayDefaults();
     bindTabs();
+    bindQuickActions();
     bindForms();
     updateNetworkState();
     await registerServiceWorker();
     await loadBootstrap();
     await renderQueue();
     document.getElementById("syncNow").addEventListener("click", syncQueue);
+    document.getElementById("retryQueue").addEventListener("click", retryPendingEvents);
     window.addEventListener("online", () => {
       updateNetworkState();
       syncQueue();

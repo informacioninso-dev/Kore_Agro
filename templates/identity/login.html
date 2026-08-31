@@ -1,0 +1,84 @@
+{% load static %}
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#183522">
+    <link rel="stylesheet" href="{% static 'identity/css/login.css' %}">
+    <title>Entrar a la finca | KORE AGRO</title>
+  </head>
+  <body>
+    <main class="login-shell">
+      <section class="welcome-panel" aria-label="KORE AGRO">
+        <div class="landscape" aria-hidden="true">
+          <svg viewBox="0 0 760 680" fill="none">
+            <circle cx="602" cy="128" r="48" fill="#E4D36C"/>
+            <path d="M0 307C106 223 193 225 292 289c87 56 167 55 257-1 68-42 138-35 211 8v384H0V307Z" fill="#5E874D"/>
+            <path d="M0 398c112-87 222-90 328-8 89 69 199 67 302-4 47-32 91-38 130-22v316H0V398Z" fill="#315D3B"/>
+            <path d="M0 511c116-53 221-50 334 12 119 66 264 59 426-17v174H0V511Z" fill="#1C4129"/>
+            <path d="m296 453 49-30 49 30v61h-98v-61Z" fill="#D9A65C"/>
+            <path d="M284 451h122v12H284zM307 514h76v28h-76z" fill="#F4E6C2"/>
+            <path d="M507 500c17-20 43-24 64-11 11 7 25 7 37-1 18-11 42-7 56 11l12 16H495l12-15Z" fill="#FFF8E7"/>
+            <path d="M509 515v20m151-20v20M542 491l-8-16m42 9 8-15" stroke="#FFF8E7" stroke-width="7" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div class="brand-lockup">
+          <span class="brand-mark">K</span>
+          <span><strong>KORE</strong><small>AGRO</small></span>
+        </div>
+        <div class="welcome-copy">
+          <p class="kicker">La finca, más clara</p>
+          <h1>Usted cuida el ganado.<br>KORE cuida los detalles.</h1>
+          <p class="lead">Registre como en el cuaderno, incluso sin señal, y reciba alertas antes de que un problema cueste tiempo o leche.</p>
+        </div>
+        <ul class="benefits">
+          <li><span class="benefit-icon">01</span><span><strong>Menos vueltas</strong><small>Aretes, litros e insumos en pocos pasos.</small></span></li>
+          <li><span class="benefit-icon">02</span><span><strong>Lo importante primero</strong><small>Retiro de leche, tratamientos y vacas por revisar.</small></span></li>
+          <li><span class="benefit-icon">03</span><span><strong>La cuenta clara</strong><small>El dueño ve costos y resultados sin perseguir papeles.</small></span></li>
+        </ul>
+      </section>
+
+      <section class="access-panel">
+        <div class="access-card">
+          <a class="mobile-brand" href="/" aria-label="KORE AGRO"><span>K</span> KORE <small>AGRO</small></a>
+          <p class="kicker">Acceso a su hacienda</p>
+          <h2>Bienvenido de vuelta</h2>
+          <p class="intro">Ingrese para continuar con la jornada de hoy.</p>
+
+          <form method="post" class="login-form" novalidate>
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ next }}">
+            {% if form.non_field_errors %}
+              <div class="form-error" role="alert">{{ form.non_field_errors|striptags }}</div>
+            {% endif %}
+
+            <label for="{{ form.username.id_for_label }}">Usuario</label>
+            <div class="input-wrap">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="8" r="3.5" stroke="currentColor" stroke-width="1.8"/><path d="M4.5 20c.8-4 3.2-6 7.5-6s6.7 2 7.5 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+              {{ form.username }}
+            </div>
+            {% for error in form.username.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
+
+            <label for="{{ form.password.id_for_label }}">Contraseña</label>
+            <div class="input-wrap password-wrap">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="5" y="10" width="14" height="10" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M8 10V7a4 4 0 0 1 8 0v3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+              {{ form.password }}
+              <button class="toggle-password" type="button" data-password-toggle aria-label="Mostrar contraseña">Ver</button>
+            </div>
+            {% for error in form.password.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
+
+            <button class="submit-button" type="submit">Entrar a mi finca <span aria-hidden="true">→</span></button>
+          </form>
+
+          <div class="access-help">
+            <strong>¿Es su primera vez?</strong>
+            <p>Pida su usuario al administrador de la hacienda. Cada persona entra con su propio acceso.</p>
+          </div>
+        </div>
+        <p class="trust-note"><span></span>Su información está separada y protegida por hacienda.</p>
+      </section>
+    </main>
+    <script src="{% static 'identity/js/login.js' %}" defer></script>
+  </body>
+</html>

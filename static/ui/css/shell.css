@@ -1,0 +1,50 @@
+:root {
+  --kore-ink: #193326;
+  --kore-muted: #68766a;
+  --kore-leaf: #2f6b42;
+  --kore-leaf-dark: #1f4d31;
+  --kore-sun: #e9b44c;
+  --kore-paper: #f5f1e7;
+  --kore-line: #d8dece;
+}
+
+.kore-shell { background: var(--kore-paper); color: var(--kore-ink); font-family: ui-sans-serif, system-ui, sans-serif; }
+.kore-layout { display: grid; grid-template-columns: 264px minmax(0, 1fr); grid-template-rows: 76px minmax(calc(100vh - 76px), auto); min-height: 100vh; }
+.kore-header { align-items: center; background: #fbf9f2; border-bottom: 1px solid var(--kore-line); display: flex; grid-column: 1 / -1; justify-content: space-between; padding: 0 32px 0 27px; }
+.kore-brand { align-items: center; color: var(--kore-ink); display: flex; gap: 11px; text-decoration: none; }
+.kore-brand-mark { align-items: center; background: var(--kore-leaf); border-radius: 11px; color: #fffdf8; display: flex; height: 42px; justify-content: center; width: 42px; }
+.kore-brand-mark svg { height: 29px; width: 29px; }
+.kore-brand strong { display: block; font-family: Georgia, 'Times New Roman', serif; font-size: 20px; letter-spacing: -.03em; line-height: 1; }
+.kore-brand small { color: var(--kore-muted); display: block; font-family: ui-sans-serif, sans-serif; font-size: 10px; font-weight: 700; letter-spacing: .12em; margin-top: 5px; text-transform: uppercase; }
+.kore-farm-context { align-items: center; color: var(--kore-muted); display: flex; font-family: ui-sans-serif, sans-serif; font-size: 13px; gap: 8px; }
+.kore-online-dot { background: #65a24d; border-radius: 50%; box-shadow: 0 0 0 4px #e5efdd; height: 8px; width: 8px; }
+.kore-sidebar { background: #e8eddf; border-right: 1px solid var(--kore-line); display: flex; flex-direction: column; padding: 31px 16px 20px; }
+.kore-nav-label { color: #75806f; font-family: ui-sans-serif, sans-serif; font-size: 10px; font-weight: 800; letter-spacing: .14em; margin: 0 11px 12px; text-transform: uppercase; }
+.kore-nav { display: grid; gap: 5px; }
+.kore-nav a { align-items: center; border-radius: 10px; color: #405545; display: flex; font-family: ui-sans-serif, sans-serif; font-size: 14px; font-weight: 650; gap: 12px; min-height: 47px; padding: 10px 12px; text-decoration: none; transition: background .18s ease, color .18s ease, transform .18s ease; }
+.kore-nav a svg { flex: 0 0 auto; height: 21px; width: 21px; }
+.kore-nav a:hover { background: #d9e4d2; color: var(--kore-leaf-dark); transform: translateX(2px); }
+.kore-nav a.is-active { background: var(--kore-leaf-dark); box-shadow: 0 5px 13px #2451372b; color: #fffdf7; }
+.kore-nav a.kore-field-link { background: var(--kore-sun); color: #3f351f; margin: 10px 0; }
+.kore-nav a.kore-field-link:hover { background: #f0c668; color: #312918; }
+.kore-sidebar-footer { border-top: 1px solid #cdd6c5; display: grid; font-family: ui-sans-serif, sans-serif; gap: 8px; margin-top: auto; padding: 18px 10px 2px; }
+.kore-sidebar-footer a, .kore-sidebar-footer button { background: transparent; border: 0; color: #647064; cursor: pointer; font-size: 12px; padding: 0; text-align: left; text-decoration: none; }
+.kore-sidebar-footer a:hover, .kore-sidebar-footer button:hover { color: var(--kore-leaf-dark); text-decoration: underline; }
+.kore-main { max-width: 1440px; padding: 36px 42px 56px; width: 100%; }
+.kore-mobile-nav { display: none; }
+
+@media (max-width: 760px) {
+  .kore-layout { display: block; padding-bottom: 73px; }
+  .kore-header { height: 65px; padding: 0 19px; }
+  .kore-brand-mark { border-radius: 9px; height: 35px; width: 35px; }
+  .kore-brand-mark svg { height: 24px; width: 24px; }
+  .kore-brand strong { font-size: 18px; }
+  .kore-brand small { font-size: 8px; margin-top: 3px; }
+  .kore-farm-context { font-size: 0; }
+  .kore-sidebar { display: none; }
+  .kore-main { padding: 24px 17px 30px; }
+  .kore-mobile-nav { background: #fbf9f2; border-top: 1px solid var(--kore-line); bottom: 0; display: grid; grid-template-columns: repeat(4, 1fr); left: 0; padding: 8px 10px 10px; position: fixed; right: 0; z-index: 20; }
+  .kore-mobile-nav a { color: #708070; font-family: ui-sans-serif, sans-serif; font-size: 10px; font-weight: 750; padding: 8px 2px; text-align: center; text-decoration: none; }
+  .kore-mobile-nav a.is-active { color: var(--kore-leaf-dark); }
+  .kore-mobile-nav a.is-field span { background: var(--kore-sun); border-radius: 7px; color: #3e321c; display: block; margin: -22px auto 0; padding: 13px 3px; width: min(92px, 100%); }
+}

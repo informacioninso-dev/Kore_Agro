@@ -6,7 +6,7 @@ from typing import Any
 from uuid import UUID
 
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 from django.utils.dateparse import parse_date
 
@@ -58,11 +58,31 @@ class ActionEventResult:
     event_id: UUID
     status: str
     detail: str = ""
+    retryable: bool = False
+    resolution: str = ""
 
 
 def process_action_queue(events: list[ActionEventMessage]) -> list[ActionEventResult]:
     ordered_events = sorted(events, key=lambda item: item.client_sequence)
-    return [process_action_event(event) for event in ordered_events]
+    results = []
+    blocked_by = None
+    for event in ordered_events:
+        if blocked_by:
+            results.append(
+                ActionEventResult(
+                    event_id=event.event_id,
+                    status="blocked",
+                    detail=f"Blocked by event {blocked_by}.",
+                    retryable=True,
+                    resolution="Resolve the earlier event, then retry the queue.",
+                )
+            )
+            continue
+        result = process_action_event(event)
+        results.append(result)
+        if result.status in {"failed", "conflict"}:
+            blocked_by = event.event_id
+    return results
 
 
 def process_action_event(message: ActionEventMessage) -> ActionEventResult:
@@ -80,11 +100,43 @@ def process_action_event(message: ActionEventMessage) -> ActionEventResult:
             "status": IncomingEvent.Status.RECEIVED,
         },
     )
+    if not created and _event_contents_differ(incoming, message):
+        return ActionEventResult(
+            event_id=message.event_id,
+            status="conflict",
+            detail="The event_id was already used with different data.",
+            resolution="Create a new event instead of reusing this event_id.",
+        )
     if not created and incoming.status == IncomingEvent.Status.PROCESSED:
         return ActionEventResult(
             event_id=message.event_id,
             status="acked",
             detail="already_processed",
+        )
+    if not created and incoming.status == IncomingEvent.Status.CONFLICT:
+        return ActionEventResult(
+            event_id=message.event_id,
+            status="conflict",
+            detail=incoming.error_message,
+            resolution="Create a corrected event with a new event_id.",
+        )
+
+    sequence_event = (
+        IncomingEvent.objects.filter(
+            device_id=message.device_id,
+            client_sequence=message.client_sequence,
+        )
+        .exclude(event_id=message.event_id)
+        .first()
+    )
+    if sequence_event:
+        detail = f"Sequence {message.client_sequence} is already assigned to another event."
+        incoming.mark_conflict(code="sequence_conflict", message=detail)
+        return ActionEventResult(
+            event_id=message.event_id,
+            status="conflict",
+            detail=detail,
+            resolution="Create a new event with the next device sequence.",
         )
 
     incoming.mark_processing()
@@ -93,13 +145,46 @@ def process_action_event(message: ActionEventMessage) -> ActionEventResult:
             _dispatch(incoming)
     except InsufficientStockError as exc:
         incoming.mark_failed(code="insufficient_stock", message=str(exc))
-        return ActionEventResult(event_id=message.event_id, status="failed", detail=str(exc))
+        return ActionEventResult(
+            event_id=message.event_id,
+            status="failed",
+            detail=str(exc),
+            retryable=True,
+            resolution="Receive or adjust stock, then retry this event.",
+        )
     except (ObjectDoesNotExist, ValidationError, ValueError, KeyError) as exc:
         incoming.mark_failed(code=exc.__class__.__name__, message=str(exc))
-        return ActionEventResult(event_id=message.event_id, status="failed", detail=str(exc))
+        return ActionEventResult(
+            event_id=message.event_id,
+            status="failed",
+            detail=str(exc),
+            retryable=True,
+            resolution="Correct the missing or invalid data, then retry this event.",
+        )
+    except IntegrityError:
+        detail = "This event conflicts with data already registered."
+        incoming.mark_conflict(code="integrity_conflict", message=detail)
+        return ActionEventResult(
+            event_id=message.event_id,
+            status="conflict",
+            detail=detail,
+            resolution="Review the existing record and create a corrected event if needed.",
+        )
 
     incoming.mark_processed()
     return ActionEventResult(event_id=message.event_id, status="acked")
+
+
+def _event_contents_differ(incoming: IncomingEvent, message: ActionEventMessage) -> bool:
+    return any(
+        (
+            incoming.device_id != message.device_id,
+            incoming.client_sequence != message.client_sequence,
+            incoming.event_type != message.event_type,
+            incoming.occurred_at != message.occurred_at,
+            incoming.payload != message.payload,
+        )
+    )
 
 
 def _dispatch(event: IncomingEvent) -> None:

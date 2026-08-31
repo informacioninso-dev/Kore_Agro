@@ -51,6 +51,12 @@ class IncomingEvent(TimeStampedModel):
         self.error_message = message
         self.save(update_fields=["status", "error_code", "error_message", "updated_at"])
 
+    def mark_conflict(self, *, code: str, message: str) -> None:
+        self.status = self.Status.CONFLICT
+        self.error_code = code[:80]
+        self.error_message = message
+        self.save(update_fields=["status", "error_code", "error_message", "updated_at"])
+
     def __str__(self) -> str:
         return f"{self.event_type} {self.event_id}"
 

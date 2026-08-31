@@ -3,24 +3,25 @@
 {% block title %}KORE AGRO - Dashboard{% endblock %}
 
 {% block content %}
-  <section class="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-    <div>
-      <h1 class="text-2xl font-semibold text-white">Control y Costo Real</h1>
-      <p class="mt-1 text-sm text-neutral-400">P&L operativo, alertas sanitarias y agenda reproductiva.</p>
+  <section class="mb-7 rounded-3xl border border-[#d2ddc8] bg-[#e5eddb] px-6 py-7 md:flex md:items-end md:justify-between md:px-8">
+    <div class="max-w-xl">
+      <p class="mb-2 text-xs font-bold uppercase tracking-[0.16em] text-emerald-800">Tu hacienda hoy</p>
+      <h1 class="font-serif text-3xl font-semibold tracking-tight text-emerald-950 md:text-4xl">Que necesita tu atencion</h1>
+      <p class="mt-2 text-sm leading-6 text-emerald-950/70">Revisa primero los animales y tareas de la jornada. Las cuentas quedan en el resumen.</p>
+      <a class="mt-4 inline-block text-sm font-bold text-emerald-800 hover:text-emerald-950" href="{% url 'dashboard:information_center' %}">Ver informacion externa</a>
     </div>
-    <form class="grid gap-2 sm:grid-cols-4" hx-get="{% url 'dashboard:pnl_fragment' %}" hx-target="#pnl-panel" hx-swap="outerHTML">
-      <select name="farm" class="rounded border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-white">
+    <form class="mt-5 flex items-center gap-2 md:mt-0" hx-get="{% url 'dashboard:pnl_fragment' %}" hx-target="#pnl-panel" hx-swap="outerHTML">
+      <label class="sr-only" for="farm">Hacienda</label>
+      <select id="farm" name="farm" class="min-w-0 rounded-xl border border-[#c6d1bd] bg-[#fffdf7] px-3 py-3 text-sm font-medium text-emerald-950">
         {% for farm in farms %}
           <option value="{{ farm.id }}" {% if selected_farm.id == farm.id %}selected{% endif %}>{{ farm.name }}</option>
         {% endfor %}
       </select>
-      <input name="start" value="{{ start_date|date:'Y-m-d' }}" type="date" class="rounded border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-white">
-      <input name="end" value="{{ end_date|date:'Y-m-d' }}" type="date" class="rounded border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-white">
-      <button class="rounded bg-emerald-500 px-4 py-2 text-sm font-semibold text-neutral-950 hover:bg-emerald-400">Actualizar</button>
+      <button class="rounded-xl bg-emerald-800 px-4 py-3 text-sm font-semibold text-white hover:bg-emerald-700">Ver</button>
     </form>
   </section>
 
-  {% include "dashboard/_pnl.html" %}
   {% include "dashboard/_actions.html" %}
+  {% include "dashboard/_pnl.html" %}
 {% endblock %}
 

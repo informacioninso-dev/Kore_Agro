@@ -131,6 +131,37 @@ def action_list_fragment(request):
     return render(request, "dashboard/_actions.html", _dashboard_context(request))
 
 
+def information_center(request: HttpRequest) -> HttpResponse:
+    """Show only traceable official sources until stable provider APIs are available."""
+    sources = [
+        {
+            "title": "Clima y alertas",
+            "description": "Pronosticos, alertas y boletines para planificar el trabajo de campo.",
+            "meta": "INAMHI | Consulta oficial",
+            "url": "https://servicios.inamhi.gob.ec/",
+        },
+        {
+            "title": "Pronostico agrometeorologico",
+            "description": "Boletines para revisar lluvia, temperatura y condiciones de la temporada.",
+            "meta": "INAMHI | Actualizacion segun publicacion",
+            "url": "https://servicios.inamhi.gob.ec/pronostico-agrometeorologico-bisemanal-2026-julio-diciembre/",
+        },
+        {
+            "title": "Campanas sanitarias",
+            "description": "Consulta datos publicos de vacunacion contra aftosa y rabia.",
+            "meta": "Agrocalidad | Datos Abiertos Ecuador",
+            "url": "https://www.datosabiertos.gob.ec/dataset/datos-vacunacion-fiebre-aftosa-mas-rabia/resource/870fcb8b-2b7e-470d-adbd-b690f6996cec",
+        },
+        {
+            "title": "Normativa vigente",
+            "description": "Revisa publicaciones y resoluciones oficiales antes de tomar una decision regulatoria.",
+            "meta": "Registro Oficial | Fuente legal",
+            "url": "https://www.registroficial.gob.ec/",
+        },
+    ]
+    return render(request, "dashboard/information_center.html", {"sources": sources})
+
+
 def _finance_context(request: HttpRequest, overrides: dict | None = None) -> dict:
     start_date, end_date = _date_range(request)
     farm = _selected_farm(request)

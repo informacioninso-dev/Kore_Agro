@@ -3,7 +3,6 @@ from decimal import Decimal
 from uuid import uuid4
 
 import pytest
-from django.test import Client as HttpClient
 from django.utils import timezone
 from django_tenants.utils import tenant_context
 
@@ -17,7 +16,7 @@ from apps.inventory.services import adjust_stock, receive_input
 from apps.milk.models import MilkingSession, MilkYield
 from apps.milk.services import MilkRecord, register_milking_detailed
 from apps.sync.services import ActionEventMessage, process_action_event
-from tests.factories import create_tenant, seed_farm
+from tests.factories import authenticated_manager_client, create_tenant, seed_farm
 
 
 def _action_message(*, farm, event_type: str, payload: dict, sequence: int = 1):
@@ -320,7 +319,7 @@ def test_htmx_finance_screen_registers_a_direct_expense():
         farm, group, _, _, _ = seed_farm()
         farm_id, group_id = farm.id, group.id
 
-    client = HttpClient(HTTP_HOST=f"{tenant.schema_name}.localhost")
+    client = authenticated_manager_client(tenant)
     response = client.post(
         "/finanzas/gasto/",
         data={
@@ -350,7 +349,7 @@ def test_htmx_master_data_registers_an_input_receipt():
         farm, _, _, feed, _ = seed_farm()
         farm_id, feed_id = farm.id, feed.id
 
-    client = HttpClient(HTTP_HOST=f"{tenant.schema_name}.localhost")
+    client = authenticated_manager_client(tenant)
     response = client.post(
         "/datos/stock/recepcion/",
         data={

@@ -3,7 +3,6 @@ from decimal import Decimal
 from uuid import uuid4
 
 import pytest
-from django.test import Client as HttpClient
 from django.utils import timezone
 from django_tenants.utils import tenant_context
 
@@ -15,7 +14,7 @@ from apps.inventory.models import InventoryMovement, StockLot
 from apps.milk.models import MilkYield
 from apps.sync.models import IncomingEvent
 from apps.sync.services import ActionEventMessage, process_action_event
-from tests.factories import create_tenant, seed_farm
+from tests.factories import authenticated_manager_client, create_tenant, seed_farm
 
 
 @pytest.mark.django_db(transaction=True)
@@ -144,7 +143,7 @@ def test_htmx_master_data_can_create_animal():
     with tenant_context(tenant):
         farm, group, _, _, _ = seed_farm()
 
-    client = HttpClient(HTTP_HOST=f"{tenant.schema_name}.localhost")
+    client = authenticated_manager_client(tenant)
     response = client.post(
         "/datos/animales/crear/",
         data={

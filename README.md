@@ -315,6 +315,25 @@ URLs locales:
 - API sync eventos: `http://localhost:8000/api/sync/events`
 - Servidor activo en esta sesion: `http://localhost:8020/`
 
+## Operacion De Piloto
+
+- Liveness: `GET /health/`.
+- Readiness de PostgreSQL: `GET /readiness/`.
+- Para produccion, configurar `DJANGO_SETTINGS_MODULE=config.settings.production`, un
+  `SECRET_KEY` seguro, hosts permitidos, HTTPS, PostgreSQL y Redis administrados.
+- Ejecutar un worker con `poetry run celery -A config.celery worker -l info` cuando Redis
+  este disponible. No ejecutar tareas de SRI sin el certificado y adaptador configurados.
+
+### Despliegue Con Docker
+
+1. Copiar `.env.production.example` como `.env.production` y completar secretos, dominio y
+   conexiones reales.
+2. Ejecutar `docker compose -f docker-compose.production.yml up --build -d`.
+3. Publicar solo el puerto del servicio `web` detras de un proxy TLS y comprobar
+   `GET /health/` y `GET /readiness/` antes de aceptar trafico.
+4. Programar backups externos de `postgres_data`; el volumen local no sustituye una copia
+   recuperable fuera del servidor.
+
 Validaciones:
 
 ```powershell

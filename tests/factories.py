@@ -2,10 +2,14 @@ from datetime import timedelta
 from decimal import Decimal
 from uuid import uuid4
 
+from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Group
+from django.test import Client as HttpClient
 from django.utils import timezone
-from django_tenants.utils import get_public_schema_name, schema_context
+from django_tenants.utils import get_public_schema_name, schema_context, tenant_context
 
 from apps.herd.models import Animal, Farm, HerdGroup
+from apps.identity.access import ROLE_MANAGER, ensure_role_groups
 from apps.inventory.models import Input, StockLot
 from apps.tenants.models import Client, Domain
 
@@ -17,6 +21,27 @@ def create_tenant(prefix: str = "tenant") -> Client:
         tenant = Client.objects.create(schema_name=schema_name, name=f"Tenant {schema_name}")
         Domain.objects.create(domain=f"{schema_name}.localhost", tenant=tenant, is_primary=True)
     return tenant
+
+
+def authenticated_client(tenant: Client, user) -> HttpClient:
+    """Build a client session while the auth user is in its tenant schema."""
+    client = HttpClient(HTTP_HOST=f"{tenant.schema_name}.localhost")
+    with tenant_context(tenant):
+        client.force_login(user)
+    return client
+
+
+def authenticated_manager_client(tenant: Client) -> HttpClient:
+    """Build an HTTP client with a manager session in the tenant schema."""
+    with tenant_context(tenant):
+        ensure_role_groups()
+        user = get_user_model().objects.create_user(
+            username=f"manager-{uuid4().hex[:8]}",
+            password="test-password",
+        )
+        user.groups.add(Group.objects.get(name=ROLE_MANAGER))
+
+    return authenticated_client(tenant, user)
 
 
 def seed_farm():

@@ -1,13 +1,14 @@
 :root {
   color-scheme: dark;
-  --bg: #020617;
-  --panel: #0f172a;
-  --panel-2: #111827;
-  --border: #334155;
-  --text: #f8fafc;
-  --muted: #94a3b8;
-  --accent: #34d399;
-  --danger: #fb7185;
+  --bg: #f5f1e7;
+  --panel: #fffefa;
+  --panel-2: #e5eddb;
+  --border: #d8dece;
+  --text: #193326;
+  --muted: #68766a;
+  --accent: #e9b44c;
+  --accent-ink: #3f351f;
+  --danger: #b33a32;
 }
 
 * {
@@ -19,7 +20,7 @@ body {
   min-height: 100vh;
   background: var(--bg);
   color: var(--text);
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: "Trebuchet MS", Verdana, sans-serif;
 }
 
 .topbar {
@@ -32,7 +33,7 @@ body {
   gap: 1rem;
   padding: 1rem;
   border-bottom: 1px solid var(--border);
-  background: rgba(2, 6, 23, 0.96);
+  background: rgba(20, 38, 29, 0.96);
 }
 
 .brand,
@@ -62,6 +63,162 @@ h2 {
   padding: 1rem;
   padding-bottom: 6rem;
 }
+
+.fieldHero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  overflow: hidden;
+  padding: 1.25rem;
+  border: 1px solid #6c8951;
+  border-radius: 1rem;
+  background:
+    radial-gradient(circle at 85% 15%, rgba(213, 216, 90, 0.25), transparent 26%),
+    linear-gradient(135deg, #294b30, #1b3322);
+}
+
+.fieldHero h2 {
+  margin-top: 0.25rem;
+  font-family: Georgia, serif;
+  font-size: 1.55rem;
+}
+
+.fieldHero p {
+  max-width: 28rem;
+  margin: 0.5rem 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.eyebrow {
+  color: var(--accent);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.heroMark {
+  width: 4.5rem;
+  min-width: 4.5rem;
+  color: var(--accent);
+}
+
+.heroMark svg,
+.actionIcon svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.sectionHeading {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.quickSection,
+.attentionPanel {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.quickActions {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.65rem;
+}
+
+.quickAction {
+  display: grid;
+  min-height: 9.25rem;
+  padding: 0.85rem;
+  border-width: 2px;
+  text-align: left;
+  transition: transform 160ms ease, filter 160ms ease;
+}
+
+.quickAction:active {
+  transform: scale(0.97);
+}
+
+.quickAction strong {
+  margin-top: auto;
+  font-size: 1rem;
+}
+
+.quickAction small {
+  margin-top: 0.25rem;
+  color: inherit;
+  font-size: 0.73rem;
+  font-weight: 400;
+  opacity: 0.82;
+}
+
+.actionIcon {
+  width: 2rem;
+  height: 2rem;
+}
+
+.quickAction.milk { background: #315c74; border-color: #78c9d9; color: #effffb; }
+.quickAction.repro { background: #70404a; border-color: #e29a91; color: #fff5e8; }
+.quickAction.health { background: #7a5732; border-color: #f3bd70; color: #fff8e7; }
+.quickAction.inventory { background: #48603a; border-color: #a9c86a; color: #fbffe8; }
+
+.attentionPanel,
+.quickSection {
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 0.85rem;
+  background: var(--panel);
+}
+
+.todayActions {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.attentionCard {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 0.65rem;
+  align-items: center;
+  width: 100%;
+  min-height: 4.5rem;
+  padding: 0.7rem;
+  text-align: left;
+}
+
+.attentionCard.urgent { border-color: #f3a65d; background: #54351e; }
+.attentionCard.important { border-color: #d5d85a; background: #3a4828; }
+.attentionCard.normal { border-color: #75b3a0; background: #27443c; }
+
+.attentionSymbol {
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.13);
+  font-size: 1.1rem;
+}
+
+.attentionCard strong,
+.attentionCard small {
+  display: block;
+}
+
+.attentionCard small,
+.emptyState {
+  margin-top: 0.2rem;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 400;
+}
+
+.attentionArrow { color: var(--accent); font-size: 1.35rem; }
 
 .statusPanel {
   display: grid;
@@ -118,7 +275,8 @@ button {
 }
 
 .syncIcon {
-  font-size: 1.4rem;
+  width: 1.4rem;
+  height: 1.4rem;
 }
 
 .tab {
@@ -134,6 +292,19 @@ button {
   display: none;
   padding: 1rem;
 }
+
+.panel::before {
+  display: block;
+  margin-bottom: 0.85rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+#milkPanel::before { content: "Registra los litros. El sistema calcula el valor y avisa si hay retiro de leche."; }
+#reproPanel::before { content: "Anota el evento al momento. El arete es suficiente para encontrar la vaca."; }
+#healthPanel::before { content: "Registra el tratamiento para controlar el retiro de leche y el costo."; }
+#inventoryPanel::before { content: "Registra lo que salió de bodega para que no falte ni se pierda."; }
 
 .panel.active {
   display: block;
@@ -159,7 +330,7 @@ select {
 .primary {
   border-color: var(--accent);
   background: var(--accent);
-  color: #022c22;
+  color: var(--accent-ink);
 }
 
 .danger {
@@ -176,6 +347,10 @@ select {
   padding: 1rem;
 }
 
+.queueActions { margin-top: 0.75rem; }
+
+.secondary { border-color: var(--accent); color: var(--accent); }
+
 #queueList {
   display: grid;
   gap: 0.5rem;
@@ -184,6 +359,8 @@ select {
 }
 
 #queueList li {
+  display: grid;
+  gap: 0.35rem;
   color: var(--muted);
   font-size: 0.85rem;
 }
@@ -192,6 +369,10 @@ select {
   .shell {
     max-width: 720px;
     margin: 0 auto;
+  }
+
+  .quickActions {
+    grid-template-columns: repeat(4, 1fr);
   }
 }
 

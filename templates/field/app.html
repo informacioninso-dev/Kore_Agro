@@ -12,15 +12,28 @@
   <body>
     <header class="topbar">
       <div>
-        <span class="brand">Binnso</span>
-        <h1>KORE AGRO Campo</h1>
+        <span class="brand">KORE AGRO · Campo</span>
+        <h1>La finca al día</h1>
       </div>
       <button id="syncNow" class="iconButton" type="button" aria-label="Sincronizar">
-        <span class="syncIcon">↻</span>
+        <svg class="syncIcon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M20 7V3m0 0h-4m4 0-3 3a8 8 0 1 0 2 9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
       </button>
     </header>
 
     <main class="shell">
+      <section class="fieldHero">
+        <div>
+          <span class="eyebrow" id="todayLabel">Hoy</span>
+          <h2>Registra lo que pasó.</h2>
+          <p>Sin señal también queda guardado. Cuando haya internet, se sincroniza.</p>
+        </div>
+        <div class="heroMark" aria-hidden="true">
+          <svg viewBox="0 0 48 48" fill="none"><path d="M11 28c4-3 7-7 9-13 3 6 6 10 9 13 3-3 6-7 8-13 2 7 2 13-1 18-3 5-8 7-12 7s-9-2-12-7c-3-5-3-11-1-18Z" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/><path d="M18 31c4 2 8 2 12 0" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>
+        </div>
+      </section>
+
       <section class="statusPanel">
         <div>
           <span class="label">Red</span>
@@ -36,9 +49,32 @@
         </div>
       </section>
 
+      <section class="quickSection" aria-labelledby="quick-title">
+        <div class="sectionHeading"><span class="eyebrow">Paso rápido</span><h2 id="quick-title">¿Qué pasó hoy?</h2></div>
+        <div class="quickActions">
+          <button class="quickAction milk" data-open-panel="milkPanel" data-focus="#milkForm [name='liters']" type="button">
+            <span class="actionIcon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M12 2s-6 7-6 12a6 6 0 0 0 12 0c0-5-6-12-6-12Z" stroke="currentColor" stroke-width="2"/><path d="M9 15c1 1 2 1.5 3.5 1.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span><strong>Ordeño</strong><small>Litros por vaca o lote</small>
+          </button>
+          <button class="quickAction repro" data-open-panel="reproPanel" data-focus="#reproForm [name='animal_id']" type="button">
+            <span class="actionIcon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M12 20s-8-4.4-8-10.2C4 6.6 6.1 5 8.5 5c1.6 0 2.9.8 3.5 2 0.6-1.2 1.9-2 3.5-2C17.9 5 20 6.6 20 9.8 20 15.6 12 20 12 20Z" stroke="currentColor" stroke-width="2"/><path d="M12 9v6m-3-3h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span><strong>Reproducción</strong><small>Celo, servicio o parto</small>
+          </button>
+          <button class="quickAction health" data-open-panel="healthPanel" data-focus="#healthForm [name='animal_id']" type="button">
+            <span class="actionIcon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M12 4v16M4 12h16" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/></svg></span><strong>Sanidad</strong><small>Tratamiento o retiro</small>
+          </button>
+          <button class="quickAction inventory" data-open-panel="inventoryPanel" data-focus="#inventoryForm [name='input_id']" type="button">
+            <span class="actionIcon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="m4 8 8-4 8 4-8 4-8-4Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M4 8v8l8 4 8-4V8M12 12v8" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></span><strong>Bodega</strong><small>Consumo de insumos</small>
+          </button>
+        </div>
+      </section>
+
+      <section class="attentionPanel" aria-labelledby="attention-title">
+        <div class="sectionHeading"><span class="eyebrow">Para hoy</span><h2 id="attention-title">Atenciones de la finca</h2></div>
+        <div id="todayActions" class="todayActions"><p class="emptyState">Cargando pendientes...</p></div>
+      </section>
+
       <nav class="tabs" aria-label="Captura">
-        <button class="tab active" data-panel="milkPanel" type="button">Ordeno</button>
-        <button class="tab" data-panel="reproPanel" type="button">Repro</button>
+        <button class="tab active" data-panel="milkPanel" type="button">Ordeño</button>
+        <button class="tab" data-panel="reproPanel" type="button">Reproducción</button>
         <button class="tab" data-panel="healthPanel" type="button">Sanidad</button>
         <button class="tab" data-panel="inventoryPanel" type="button">Bodega</button>
       </nav>
@@ -46,7 +82,7 @@
       <section id="milkPanel" class="panel active">
         <form id="milkForm" class="form">
           <label>Hacienda<select name="farm_id" data-source="farms" required></select></label>
-          <label>Tipo
+          <label>Registrar por
             <select name="target_type">
               <option value="animal">Vaca</option>
               <option value="group">Lote</option>
@@ -54,7 +90,7 @@
           </label>
           <label class="targetAnimal">Animal<select name="animal_id" data-source="animals"></select></label>
           <label class="targetGroup hidden">Lote<select name="group_id" data-source="groups"></select></label>
-          <label>Litros<input name="liters" inputmode="decimal" type="number" step="0.001" min="0.001" required></label>
+          <label>Litros de leche<input name="liters" inputmode="decimal" type="number" step="0.001" min="0.001" required></label>
           <label>Jornada
             <select name="shift">
               <option value="total_day">Total dia</option>
@@ -63,7 +99,7 @@
               <option value="night">Noche</option>
             </select>
           </label>
-          <button class="primary" type="submit">Guardar ordeno</button>
+          <button class="primary" type="submit">Guardar ordeño</button>
         </form>
       </section>
 
@@ -71,10 +107,10 @@
         <form id="reproForm" class="form">
           <label>Hacienda<select name="farm_id" data-source="farms" required></select></label>
           <label>Animal<select name="animal_id" data-source="animals" required></select></label>
-          <label>Evento
+          <label>¿Qué ocurrió?
             <select name="event_kind">
               <option value="reproduction.heat_recorded">Celo</option>
-              <option value="reproduction.service_recorded">Inseminacion/Monta</option>
+              <option value="reproduction.service_recorded">Inseminación o monta</option>
               <option value="reproduction.calving_recorded">Parto</option>
               <option value="reproduction.dry_off_recorded">Secado</option>
             </select>
@@ -87,7 +123,7 @@
               <option value="natural">Monta</option>
             </select>
           </label>
-          <label>Padre / pajuela<input name="sire_identifier" autocomplete="off"></label>
+          <label>Padre o pajuela<input name="sire_identifier" autocomplete="off"></label>
           <label>Arete cria<input name="calf_tag" autocomplete="off"></label>
           <label>Sexo cria
             <select name="calf_sex">
@@ -104,7 +140,7 @@
         <form id="healthForm" class="form">
           <label>Hacienda<select name="farm_id" data-source="farms" required></select></label>
           <label>Animal<select name="animal_id" data-source="animals" required></select></label>
-          <label>Diagnostico<input name="diagnosis" required autocomplete="off"></label>
+          <label>¿Qué tiene?<input name="diagnosis" required autocomplete="off" placeholder="Ej. mastitis"></label>
           <label>Insumo<select name="input_id" data-source="inputs"></select></label>
           <label>Cantidad<input name="quantity" inputmode="decimal" type="number" step="0.001" min="0"></label>
           <label>Dosis<input name="dosage" autocomplete="off"></label>
@@ -120,14 +156,17 @@
           <label>Cantidad<input name="quantity" inputmode="decimal" type="number" step="0.001" min="0.001" required></label>
           <label>Animal opcional<select name="animal_id" data-source="animals"></select></label>
           <label>Lote opcional<select name="group_id" data-source="groups"></select></label>
-          <label>Nota<input name="notes" autocomplete="off"></label>
-          <button class="primary" type="submit">Registrar consumo</button>
+          <label>Nota (opcional)<input name="notes" autocomplete="off" placeholder="Ej. 2 sacos para producción"></label>
+          <button class="primary" type="submit">Guardar consumo</button>
         </form>
       </section>
 
       <section class="queuePanel">
         <h2>Eventos pendientes</h2>
         <ol id="queueList"></ol>
+        <div class="queueActions">
+          <button id="retryQueue" class="secondary" type="button">Reintentar pendientes</button>
+        </div>
       </section>
     </main>
 

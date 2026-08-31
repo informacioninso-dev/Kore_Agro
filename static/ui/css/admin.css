@@ -1,0 +1,27 @@
+:root { --kore-surface: #fffefa; --kore-soft: #e5eddb; --kore-warning: #a86422; --kore-danger: #b33a32; }
+
+/* Transitional mapping for legacy module templates. New work uses the KORE tokens directly. */
+.kore-shell .bg-neutral-950, .kore-shell .bg-neutral-900 { background-color: var(--kore-surface) !important; }
+.kore-shell .bg-emerald-950 { background-color: #e5eddb !important; }
+.kore-shell .border-neutral-800, .kore-shell .border-neutral-700 { border-color: var(--kore-line) !important; }
+.kore-shell .divide-neutral-800 > :not([hidden]) ~ :not([hidden]) { border-color: var(--kore-line) !important; }
+.kore-shell .text-white, .kore-shell .text-neutral-100, .kore-shell .text-neutral-200, .kore-shell .text-neutral-300 { color: var(--kore-ink) !important; }
+.kore-shell .text-neutral-400, .kore-shell .text-neutral-500 { color: var(--kore-muted) !important; }
+.kore-shell .text-emerald-100, .kore-shell .text-emerald-300 { color: var(--kore-leaf-dark) !important; }
+.kore-shell .bg-emerald-500 { background-color: var(--kore-leaf-dark) !important; color: #fffdf8 !important; }
+.kore-shell .text-neutral-950 { color: #fffdf8 !important; }
+.kore-main input, .kore-main select, .kore-main textarea { background: #fffefa; border: 1px solid var(--kore-line); border-radius: .65rem; color: var(--kore-ink); margin-top: .3rem; max-width: 100%; padding: .55rem .7rem; width: 100%; }
+.kore-main button { border-radius: .65rem; }
+.kore-main table th { color: var(--kore-muted); font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; }
+.kore-main table td { color: var(--kore-ink); }
+.kore-page-heading { margin-bottom: 1.5rem; }
+.kore-page-heading .eyebrow { color: var(--kore-leaf-dark); font-size: .72rem; font-weight: 800; letter-spacing: .15em; text-transform: uppercase; }
+.kore-page-heading h1 { color: var(--kore-ink); font-family: Georgia, serif; font-size: clamp(2rem, 4vw, 2.8rem); font-weight: 600; letter-spacing: -.035em; margin: .3rem 0; }
+.kore-page-heading p { color: var(--kore-muted); margin: 0; max-width: 44rem; }
+.kore-info-grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); }
+.kore-info-card { background: var(--kore-surface); border: 1px solid var(--kore-line); border-radius: 1rem; display: flex; flex-direction: column; gap: .8rem; padding: 1.25rem; }
+.kore-info-card h2 { color: var(--kore-ink); font-family: Georgia, serif; font-size: 1.25rem; margin: 0; }
+.kore-info-card p { color: var(--kore-muted); font-size: .9rem; line-height: 1.5; margin: 0; }
+.kore-info-card .source-meta { color: var(--kore-leaf-dark); font-size: .75rem; font-weight: 750; }
+.kore-info-card a { color: var(--kore-leaf-dark); font-size: .9rem; font-weight: 750; text-decoration: none; }
+.kore-info-card a:hover { text-decoration: underline; }

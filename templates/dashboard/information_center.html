@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block title %}KORE AGRO - Informacion externa{% endblock %}
+
+{% block content %}
+  <section class="kore-page-heading">
+    <p class="eyebrow">Consulta externa</p>
+    <h1>Informacion externa</h1>
+    <p>Fuentes oficiales para consultar clima, campanas y normativa. Cada consulta abre la fuente original y no reemplaza indicaciones de Agrocalidad, un veterinario o asesoria legal.</p>
+  </section>
+  <section class="kore-info-grid" aria-label="Fuentes oficiales">
+    {% for source in sources %}
+      <article class="kore-info-card">
+        <span class="source-meta">{{ source.meta }}</span>
+        <h2>{{ source.title }}</h2>
+        <p>{{ source.description }}</p>
+        <a href="{{ source.url }}" target="_blank" rel="noopener noreferrer">Consultar fuente oficial</a>
+      </article>
+    {% endfor %}
+  </section>
+{% endblock %}
