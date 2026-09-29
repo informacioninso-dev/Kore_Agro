@@ -3,6 +3,7 @@ from typing import Any
 from uuid import UUID
 
 from ninja import Schema
+from pydantic import Field
 
 
 class ActionEventSchema(Schema):
@@ -11,10 +12,10 @@ class ActionEventSchema(Schema):
     device_id: UUID
     actor_id: UUID | None = None
     occurred_at: datetime
-    event_type: str
+    event_type: str = Field(min_length=1, max_length=100)
     payload: dict[str, Any]
-    client_sequence: int
-    schema_version: int = 1
+    client_sequence: int = Field(gt=0)
+    schema_version: int = Field(default=1, gt=0)
 
 
 class ActionQueueSchema(Schema):
@@ -31,4 +32,3 @@ class EventAckSchema(Schema):
 
 class ActionQueueResponseSchema(Schema):
     results: list[EventAckSchema]
-

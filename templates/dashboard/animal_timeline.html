@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block title %}KORE AGRO - Historial {{ animal.tag }}{% endblock %}
+
+{% block content %}
+  <section class="kore-page-heading">
+    <p class="eyebrow">Historia del animal</p>
+    <h1>Arete {{ animal.tag }}{% if animal.name %} · {{ animal.name }}{% endif %}</h1>
+    <p>{{ animal.farm.name }} · {{ animal.current_group.name|default:"Sin lote" }} · {{ animal.get_status_display }}</p>
+  </section>
+
+  <div class="mb-5 flex flex-wrap gap-2">
+    <a class="rounded border border-neutral-700 px-3 py-2 text-sm font-semibold text-emerald-700" href="{% url 'dashboard:growth_dashboard' %}?farm={{ animal.farm_id }}">Volver a crecimiento</a>
+    <a class="rounded border border-neutral-700 px-3 py-2 text-sm font-semibold text-emerald-700" href="{% url 'dashboard:master_data' %}">Ver hato</a>
+  </div>
+
+  <section class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Resumen del animal">
+    <article class="rounded border border-neutral-800 bg-neutral-900 p-4">
+      <div class="text-xs uppercase text-neutral-500">Último peso</div>
+      <div class="mt-2 text-2xl font-semibold">{% if growth %}{{ growth.latest.weight_kg|floatformat:1 }} kg{% else %}-{% endif %}</div>
+      {% if growth %}<div class="mt-1 text-xs text-neutral-500">{{ growth.latest.weighed_on|date:"Y-m-d" }}</div>{% endif %}
+    </article>
+    <article class="rounded border border-neutral-800 bg-neutral-900 p-4">
+      <div class="text-xs uppercase text-neutral-500">Ganancia diaria</div>
+      <div class="mt-2 text-2xl font-semibold">{% if growth.daily_gain != None %}{{ growth.daily_gain|floatformat:3 }} kg/día{% else %}-{% endif %}</div>
+    </article>
+    <article class="rounded border border-neutral-800 bg-neutral-900 p-4">
+      <div class="text-xs uppercase text-neutral-500">Ingresos acumulados</div>
+      <div class="mt-2 text-2xl font-semibold">$ {{ pnl.revenue|floatformat:2 }}</div>
+    </article>
+    <article class="rounded border border-neutral-800 bg-neutral-900 p-4">
+      <div class="text-xs uppercase text-neutral-500">Costos acumulados</div>
+      <div class="mt-2 text-2xl font-semibold">$ {{ pnl.costs|floatformat:2 }}</div>
+    </article>
+  </section>
+
+  <section class="mt-6 border-t border-neutral-800 pt-5">
+    <div class="mb-4">
+      <h2 class="text-lg font-semibold text-white">Línea de tiempo</h2>
+      <p class="mt-1 text-sm text-neutral-500">Pesajes, reproducción, sanidad, producción, consumos y movimientos económicos en un solo lugar.</p>
+    </div>
+    <ol class="relative ml-3 border-l border-neutral-700 pl-6">
+      {% for item in timeline %}
+        <li class="relative pb-6">
+          <span class="absolute -left-[1.95rem] top-1 h-3 w-3 rounded-full border-2 border-white {% if item.kind == 'peso' %}bg-emerald-600{% elif item.kind == 'sanidad' %}bg-red-600{% elif item.kind == 'reproduccion' %}bg-pink-600{% elif item.kind == 'finanzas' %}bg-amber-600{% elif item.kind == 'leche' %}bg-cyan-600{% else %}bg-neutral-600{% endif %}" aria-hidden="true"></span>
+          <div class="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
+            <h3 class="text-sm font-semibold text-white">{{ item.title }}</h3>
+            <time class="text-xs text-neutral-500">{{ item.occurred_on|date:"Y-m-d" }}</time>
+          </div>
+          {% if item.detail %}<p class="mt-1 text-sm text-neutral-500">{{ item.detail }}</p>{% endif %}
+          <span class="mt-2 inline-block text-xs font-semibold uppercase text-emerald-700">{{ item.kind }}</span>
+        </li>
+      {% empty %}
+        <li class="pb-6 text-sm text-neutral-500">Todavía no hay eventos para este animal.</li>
+      {% endfor %}
+    </ol>
+  </section>
+{% endblock %}

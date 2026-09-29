@@ -4,6 +4,26 @@ from django.db import models
 from apps.common.models import TenantModel
 
 
+class FieldAssignment(TenantModel):
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="field_assignment",
+    )
+    farm = models.ForeignKey(
+        "herd.Farm",
+        on_delete=models.PROTECT,
+        related_name="field_assignments",
+    )
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["user__username"]
+
+    def __str__(self) -> str:
+        return f"{self.user} - {self.farm}"
+
+
 class FieldDevice(TenantModel):
     name = models.CharField(max_length=120)
     device_uuid = models.UUIDField(unique=True)
@@ -22,4 +42,3 @@ class FieldDevice(TenantModel):
 
     def __str__(self) -> str:
         return self.name
-

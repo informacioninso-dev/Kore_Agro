@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+
+{% block title %}KORE Agro - Personal y tareas{% endblock %}
+
+{% block content %}
+  <section class="kore-page-heading">
+    <p class="eyebrow">Operacion diaria</p>
+    <h1>Personal y tareas</h1>
+    <p>Asigna el trabajo de la jornada, registra horas ejecutadas y lleva el costo laboral al resultado de la hacienda.</p>
+  </section>
+
+  <section class="space-y-6">
+    <form method="get" class="grid gap-3 border-b border-neutral-800 pb-5 sm:grid-cols-[minmax(0,24rem)_auto]">
+      <label class="grid gap-1 text-xs uppercase text-neutral-500">Hacienda
+        <select name="farm">
+          {% for farm in farms %}
+            <option value="{{ farm.id }}" {% if selected_farm.id == farm.id %}selected{% endif %}>{{ farm.name }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <button class="self-end bg-emerald-500 px-4 py-2 text-sm font-semibold text-neutral-950" type="submit">Cambiar hacienda</button>
+    </form>
+
+    {% if workforce_message %}
+      <div class="rounded border border-emerald-700 bg-emerald-950 px-4 py-3 text-sm text-emerald-100">{{ workforce_message }}</div>
+    {% endif %}
+    {% if workforce_error %}
+      <div class="rounded border border-red-800 bg-red-950 px-4 py-3 text-sm text-red-100">{{ workforce_error }}</div>
+    {% endif %}
+
+    <section class="grid gap-3 sm:grid-cols-2 xl:grid-cols-6" aria-label="Resumen de personal y tareas">
+      <article class="rounded border border-neutral-800 bg-neutral-900 p-4"><div class="text-xs uppercase text-neutral-500">Personal activo</div><div class="mt-2 text-2xl font-semibold">{{ active_workers }}</div></article>
+      <article class="rounded border border-neutral-800 bg-neutral-900 p-4"><div class="text-xs uppercase text-neutral-500">Pendientes</div><div class="mt-2 text-2xl font-semibold">{{ pending_count }}</div></article>
+      <article class="rounded border border-sky-800 bg-sky-950 p-4"><div class="text-xs uppercase text-sky-300">En curso</div><div class="mt-2 text-2xl font-semibold">{{ in_progress_count }}</div></article>
+      <article class="rounded border {% if overdue_count %}border-red-800 bg-red-950{% else %}border-neutral-800 bg-neutral-900{% endif %} p-4"><div class="text-xs uppercase {% if overdue_count %}text-red-300{% else %}text-neutral-500{% endif %}">Atrasadas</div><div class="mt-2 text-2xl font-semibold">{{ overdue_count }}</div></article>
+      <article class="rounded border border-neutral-800 bg-neutral-900 p-4"><div class="text-xs uppercase text-neutral-500">Horas del mes</div><div class="mt-2 text-2xl font-semibold">{{ month_hours|floatformat:2 }}</div></article>
+      <article class="rounded border border-emerald-800 bg-emerald-950 p-4"><div class="text-xs uppercase text-emerald-300">Mano de obra</div><div class="mt-2 text-2xl font-semibold">$ {{ month_cost|floatformat:2 }}</div></article>
+    </section>
+
+    <section class="grid gap-6 xl:grid-cols-[minmax(0,1.5fr)_minmax(20rem,.5fr)]">
+      <div class="overflow-hidden rounded border border-neutral-800 bg-neutral-950">
+        <header class="border-b border-neutral-800 px-4 py-3">
+          <h2 class="text-sm font-semibold">Trabajo abierto</h2>
+          <p class="mt-1 text-xs text-neutral-500">Tareas pendientes o en ejecución, ordenadas por fecha y prioridad.</p>
+        </header>
+        <div class="overflow-x-auto">
+          <table class="w-full min-w-[900px] text-left text-sm">
+            <thead class="bg-neutral-900 text-xs uppercase text-neutral-500"><tr><th class="px-4 py-3">Fecha</th><th>Tarea</th><th>Responsable</th><th>Contexto</th><th>Prioridad</th><th>Estado</th><th></th></tr></thead>
+            <tbody class="divide-y divide-neutral-800">
+              {% for task in open_tasks %}
+                <tr class="{% if task.is_overdue %}bg-red-950/40{% endif %}">
+                  <td class="px-4 py-3">{{ task.scheduled_for|date:"d/m/Y" }}{% if task.due_time %}<br><span class="text-xs text-neutral-500">{{ task.due_time|time:"H:i" }}</span>{% endif %}</td>
+                  <td><strong>{{ task.title }}</strong><br><span class="text-xs text-neutral-500">{{ task.get_category_display }}</span></td>
+                  <td>{{ task.assigned_to.full_name|default:"Sin asignar" }}</td>
+                  <td>{% if task.animal %}Arete {{ task.animal.tag }}{% elif task.group %}{{ task.group.name }}{% elif task.paddock %}{{ task.paddock.name }}{% else %}Hacienda{% endif %}</td>
+                  <td class="{% if task.priority == 'urgent' %}text-red-300{% elif task.priority == 'high' %}text-amber-300{% endif %}">{{ task.get_priority_display }}</td>
+                  <td>{% if task.status == 'in_progress' %}<span class="font-semibold text-sky-300">En curso</span>{% else %}Pendiente{% endif %}</td>
+                  <td class="flex justify-end gap-2 py-2 pr-3">
+                    <a class="border border-neutral-700 px-2 py-1 text-xs text-neutral-300" href="{% url 'workforce:task_edit' task.id %}">Editar</a>
+                    <form method="post" action="{% url 'workforce:task_cancel' task.id %}">{% csrf_token %}<button class="border border-red-800 px-2 py-1 text-xs text-red-300" type="submit">Cancelar</button></form>
+                  </td>
+                </tr>
+              {% empty %}
+                <tr><td class="px-4 py-8 text-center text-neutral-500" colspan="7">No hay tareas abiertas en esta hacienda.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="rounded border border-neutral-800 bg-neutral-950">
+        <header class="border-b border-neutral-800 px-4 py-3">
+          <h2 class="text-sm font-semibold">Actualizar tarea</h2>
+          <p class="mt-1 text-xs text-neutral-500">Al completar se registran horas y costo laboral.</p>
+        </header>
+        <form method="post" action="{% url 'workforce:task_action' %}" class="grid gap-3 p-4">
+          {% csrf_token %}
+          <input type="hidden" name="farm" value="{{ selected_farm.id }}">
+          {% include "dashboard/_form_fields.html" with form=action_form %}
+          <button class="bg-emerald-500 px-4 py-2 text-sm font-semibold text-neutral-950" type="submit">Guardar avance</button>
+        </form>
+      </div>
+    </section>
+
+    <section class="grid gap-6 xl:grid-cols-2">
+      <div class="rounded border border-neutral-800 bg-neutral-950">
+        <header class="border-b border-neutral-800 px-4 py-3"><h2 class="text-sm font-semibold">{% if task_edit_id %}Editar tarea{% else %}Nueva tarea{% endif %}</h2></header>
+        <form method="post" action="{% if task_edit_id %}{% url 'workforce:task_update' task_edit_id %}{% else %}{% url 'workforce:task_create' %}{% endif %}" class="grid gap-3 p-4 md:grid-cols-2">
+          {% csrf_token %}
+          {% include "dashboard/_form_fields.html" with form=task_form %}
+          <div class="flex gap-2 md:col-span-2">
+            <button class="bg-emerald-500 px-4 py-2 text-sm font-semibold text-neutral-950" type="submit">{% if task_edit_id %}Actualizar tarea{% else %}Asignar tarea{% endif %}</button>
+            {% if task_edit_id %}<a class="border border-neutral-700 px-4 py-2 text-sm text-neutral-300" href="{% url 'workforce:dashboard' %}?farm={{ selected_farm.id }}">Cancelar</a>{% endif %}
+          </div>
+        </form>
+      </div>
+
+      <div class="rounded border border-neutral-800 bg-neutral-950">
+        <header class="border-b border-neutral-800 px-4 py-3"><h2 class="text-sm font-semibold">{% if worker_edit_id %}Editar trabajador{% else %}Nuevo trabajador{% endif %}</h2></header>
+        <form method="post" action="{% if worker_edit_id %}{% url 'workforce:worker_update' worker_edit_id %}{% else %}{% url 'workforce:worker_create' %}{% endif %}" class="grid gap-3 p-4 md:grid-cols-2">
+          {% csrf_token %}
+          {% include "dashboard/_form_fields.html" with form=worker_form %}
+          <div class="flex gap-2 md:col-span-2">
+            <button class="bg-emerald-500 px-4 py-2 text-sm font-semibold text-neutral-950" type="submit">{% if worker_edit_id %}Actualizar trabajador{% else %}Crear trabajador{% endif %}</button>
+            {% if worker_edit_id %}<a class="border border-neutral-700 px-4 py-2 text-sm text-neutral-300" href="{% url 'workforce:dashboard' %}?farm={{ selected_farm.id }}">Cancelar</a>{% endif %}
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <section class="overflow-hidden rounded border border-neutral-800 bg-neutral-950">
+      <header class="border-b border-neutral-800 px-4 py-3"><h2 class="text-sm font-semibold">Personal activo</h2></header>
+      <div class="overflow-x-auto">
+        <table class="w-full min-w-[760px] text-left text-sm">
+          <thead class="bg-neutral-900 text-xs uppercase text-neutral-500"><tr><th class="px-4 py-3">Codigo</th><th>Nombre</th><th>Cargo</th><th>Telefono</th><th>Usuario</th><th class="text-right">Costo/hora</th><th></th></tr></thead>
+          <tbody class="divide-y divide-neutral-800">
+            {% for worker in workers %}
+              <tr><td class="px-4 py-3 font-mono">{{ worker.code }}</td><td class="font-semibold">{{ worker.full_name }}</td><td>{{ worker.get_position_display }}</td><td>{{ worker.phone|default:"-" }}</td><td>{{ worker.user.username|default:"-" }}</td><td class="text-right">$ {{ worker.hourly_rate|floatformat:2 }}</td><td class="flex justify-end gap-2 py-2 pr-3"><a class="border border-neutral-700 px-2 py-1 text-xs text-neutral-300" href="{% url 'workforce:worker_edit' worker.id %}">Editar</a><form method="post" action="{% url 'workforce:worker_deactivate' worker.id %}">{% csrf_token %}<button class="border border-red-800 px-2 py-1 text-xs text-red-300" type="submit">Desactivar</button></form></td></tr>
+            {% empty %}
+              <tr><td class="px-4 py-6 text-neutral-500" colspan="7">Aun no hay personal registrado.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="grid gap-6 xl:grid-cols-2">
+      <div class="overflow-hidden rounded border border-neutral-800 bg-neutral-950">
+        <header class="border-b border-neutral-800 px-4 py-3"><h2 class="text-sm font-semibold">Jornadas registradas</h2></header>
+        <div class="overflow-x-auto"><table class="w-full min-w-[620px] text-left text-sm"><thead class="bg-neutral-900 text-xs uppercase text-neutral-500"><tr><th class="px-4 py-3">Fecha</th><th>Trabajador</th><th>Tarea</th><th class="text-right">Horas</th><th class="text-right">Costo</th></tr></thead><tbody class="divide-y divide-neutral-800">{% for log in work_logs %}<tr><td class="px-4 py-3">{{ log.work_date|date:"d/m/Y" }}</td><td>{{ log.worker.full_name }}</td><td>{{ log.task.title }}</td><td class="text-right">{{ log.hours|floatformat:2 }}</td><td class="text-right">$ {{ log.labor_cost|floatformat:2 }}</td></tr>{% empty %}<tr><td class="px-4 py-6 text-neutral-500" colspan="5">Sin jornadas completadas.</td></tr>{% endfor %}</tbody></table></div>
+      </div>
+      <div class="overflow-hidden rounded border border-neutral-800 bg-neutral-950">
+        <header class="border-b border-neutral-800 px-4 py-3"><h2 class="text-sm font-semibold">Tareas cerradas recientemente</h2></header>
+        <div class="overflow-x-auto"><table class="w-full min-w-[560px] text-left text-sm"><thead class="bg-neutral-900 text-xs uppercase text-neutral-500"><tr><th class="px-4 py-3">Tarea</th><th>Responsable</th><th>Fecha</th><th>Estado</th></tr></thead><tbody class="divide-y divide-neutral-800">{% for task in recent_tasks %}<tr><td class="px-4 py-3">{{ task.title }}</td><td>{{ task.assigned_to.full_name|default:"-" }}</td><td>{{ task.scheduled_for|date:"d/m/Y" }}</td><td>{{ task.get_status_display }}</td></tr>{% empty %}<tr><td class="px-4 py-6 text-neutral-500" colspan="4">Sin tareas cerradas.</td></tr>{% endfor %}</tbody></table></div>
+      </div>
+    </section>
+  </section>
+{% endblock %}

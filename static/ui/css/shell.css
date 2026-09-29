@@ -43,7 +43,7 @@
   .kore-farm-context { font-size: 0; }
   .kore-sidebar { display: none; }
   .kore-main { padding: 24px 17px 30px; }
-  .kore-mobile-nav { background: #fbf9f2; border-top: 1px solid var(--kore-line); bottom: 0; display: grid; grid-template-columns: repeat(4, 1fr); left: 0; padding: 8px 10px 10px; position: fixed; right: 0; z-index: 20; }
+  .kore-mobile-nav { background: #fbf9f2; border-top: 1px solid var(--kore-line); bottom: 0; display: grid; grid-auto-columns: minmax(68px, 1fr); grid-auto-flow: column; grid-template-columns: none; left: 0; overflow-x: auto; padding: 8px 10px 10px; position: fixed; right: 0; z-index: 20; }
   .kore-mobile-nav a { color: #708070; font-family: ui-sans-serif, sans-serif; font-size: 10px; font-weight: 750; padding: 8px 2px; text-align: center; text-decoration: none; }
   .kore-mobile-nav a.is-active { color: var(--kore-leaf-dark); }
   .kore-mobile-nav a.is-field span { background: var(--kore-sun); border-radius: 7px; color: #3e321c; display: block; margin: -22px auto 0; padding: 13px 3px; width: min(92px, 100%); }

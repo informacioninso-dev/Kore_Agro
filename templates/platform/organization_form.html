@@ -1,0 +1,65 @@
+{% extends "platform/base.html" %}
+
+{% block title %}{% if organization %}{{ organization.name }}{% else %}Nueva organizacion{% endif %} | KORE Agro{% endblock %}
+
+{% block content %}
+  <header class="platform-page-heading with-action">
+    <div>
+      <p class="platform-eyebrow">{% if organization %}Configuracion del tenant{% else %}Aprovisionamiento{% endif %}</p>
+      <h1>{% if organization %}{{ organization.name }}{% else %}Nueva organizacion{% endif %}</h1>
+      <p>{% if organization %}Actualiza su operacion contratada sin cambiar el esquema tecnico.{% else %}Crea el esquema, dominio, propietario y capacidades iniciales.{% endif %}</p>
+    </div>
+    <a class="platform-button secondary" href="{% url 'platform:organization_list' %}">Volver</a>
+  </header>
+
+  {% if form.non_field_errors %}<div class="platform-form-error">{{ form.non_field_errors }}</div>{% endif %}
+  <form method="post" class="platform-organization-form">
+    {% csrf_token %}
+    <section class="platform-form-section">
+      <div class="platform-section-intro"><h2>Identidad comercial</h2><p>Datos visibles para administracion y facturacion.</p></div>
+      <div class="platform-form-grid">
+        {% include "platform/_field.html" with field=form.name %}
+        {% include "platform/_field.html" with field=form.legal_name %}
+        {% include "platform/_field.html" with field=form.ruc %}
+        {% include "platform/_field.html" with field=form.province %}
+        {% include "platform/_field.html" with field=form.city %}
+        {% include "platform/_field.html" with field=form.paid_until %}
+        {% include "platform/_field.html" with field=form.on_trial %}
+      </div>
+    </section>
+
+    <section class="platform-form-section">
+      <div class="platform-section-intro"><h2>Infraestructura</h2><p>El esquema queda fijo despues de crear la organizacion.</p></div>
+      <div class="platform-form-grid">
+        {% include "platform/_field.html" with field=form.schema_name %}
+        {% include "platform/_field.html" with field=form.domain %}
+      </div>
+    </section>
+
+    <section class="platform-form-section">
+      <div class="platform-section-intro"><h2>Perfiles operativos</h2><p>Definen el tipo de actividad y el contexto de la experiencia.</p></div>
+      <div class="platform-choice-field">{{ form.profiles }}{% for error in form.profiles.errors %}<span class="platform-field-error">{{ error }}</span>{% endfor %}</div>
+    </section>
+
+    <section class="platform-form-section">
+        <div class="platform-section-intro"><h2>Capacidades</h2><p>Funciones habilitadas o contratadas. Sus dependencias se agregan automaticamente.</p></div>
+      <div class="platform-choice-field capabilities">{{ form.capabilities }}{% for error in form.capabilities.errors %}<span class="platform-field-error">{{ error }}</span>{% endfor %}</div>
+    </section>
+
+    {% if not organization %}
+      <section class="platform-form-section">
+        <div class="platform-section-intro"><h2>Propietario inicial</h2><p>Se crea dentro del nuevo tenant y no tiene acceso al panel BINNSO.</p></div>
+        <div class="platform-form-grid">
+          {% include "platform/_field.html" with field=form.owner_username %}
+          {% include "platform/_field.html" with field=form.owner_email %}
+          {% include "platform/_field.html" with field=form.owner_password %}
+        </div>
+      </section>
+    {% endif %}
+
+    <div class="platform-form-actions">
+      <button class="platform-button primary" type="submit">{% if organization %}Guardar configuracion{% else %}Crear organizacion{% endif %}</button>
+      <a class="platform-button tertiary" href="{% url 'platform:organization_list' %}">Cancelar</a>
+    </div>
+  </form>
+{% endblock %}

@@ -34,17 +34,31 @@
         </div>
       </section>
 
+      <section id="farmContext" class="farmContext" aria-live="polite">
+        <span class="farmContextIcon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M3 20h18M5 20V9l7-5 7 5v11M9 20v-6h6v6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </span>
+        <div class="farmContextName">
+          <span class="label">Hacienda de trabajo</span>
+          <strong id="farmName">Cargando...</strong>
+        </div>
+        <label id="farmSwitcher" class="farmSwitcher hidden">
+          <span class="label">Cambiar</span>
+          <select id="farmSelect" aria-label="Hacienda activa"></select>
+        </label>
+      </section>
+
       <section class="statusPanel">
         <div>
-          <span class="label">Red</span>
+          <span class="label">Conexión</span>
           <strong id="networkState">...</strong>
         </div>
         <div>
-          <span class="label">Cola</span>
-          <strong id="queueCount">0</strong>
+          <span class="label">Pendientes</span>
+          <strong id="queueCount">0 eventos</strong>
         </div>
         <div>
-          <span class="label">Ultimo sync</span>
+          <span class="label">Último sync</span>
           <strong id="lastSync">Sin datos</strong>
         </div>
       </section>
@@ -52,36 +66,64 @@
       <section class="quickSection" aria-labelledby="quick-title">
         <div class="sectionHeading"><span class="eyebrow">Paso rápido</span><h2 id="quick-title">¿Qué pasó hoy?</h2></div>
         <div class="quickActions">
-          <button class="quickAction milk" data-open-panel="milkPanel" data-focus="#milkForm [name='liters']" type="button">
+          <button class="quickAction milk active" data-capability="milk" data-open-panel="milkPanel" data-focus="#milkForm [name='liters']" type="button" aria-pressed="true">
             <span class="actionIcon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M12 2s-6 7-6 12a6 6 0 0 0 12 0c0-5-6-12-6-12Z" stroke="currentColor" stroke-width="2"/><path d="M9 15c1 1 2 1.5 3.5 1.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span><strong>Ordeño</strong><small>Litros por vaca o lote</small>
           </button>
-          <button class="quickAction repro" data-open-panel="reproPanel" data-focus="#reproForm [name='animal_id']" type="button">
+          <button class="quickAction repro" data-capability="reproduction" data-open-panel="reproPanel" data-focus="#reproForm [name='animal_id']" type="button">
             <span class="actionIcon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M12 20s-8-4.4-8-10.2C4 6.6 6.1 5 8.5 5c1.6 0 2.9.8 3.5 2 0.6-1.2 1.9-2 3.5-2C17.9 5 20 6.6 20 9.8 20 15.6 12 20 12 20Z" stroke="currentColor" stroke-width="2"/><path d="M12 9v6m-3-3h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span><strong>Reproducción</strong><small>Celo, servicio o parto</small>
           </button>
-          <button class="quickAction health" data-open-panel="healthPanel" data-focus="#healthForm [name='animal_id']" type="button">
+          <button class="quickAction health" data-capability="health" data-open-panel="healthPanel" data-focus="#healthForm [name='animal_id']" type="button">
             <span class="actionIcon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M12 4v16M4 12h16" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/></svg></span><strong>Sanidad</strong><small>Tratamiento o retiro</small>
           </button>
-          <button class="quickAction inventory" data-open-panel="inventoryPanel" data-focus="#inventoryForm [name='input_id']" type="button">
+          <button class="quickAction weight" data-capability="growth" data-open-panel="weightPanel" data-focus="#weightForm [name='animal_id']" type="button">
+            <span class="actionIcon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M5 20h14l-1.2-11H6.2L5 20Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M9 9a3 3 0 0 1 6 0m-3 1V7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span><strong>Pesaje</strong><small>Peso y condicion</small>
+          </button>
+          <button class="quickAction grazing" data-capability="grazing" data-open-panel="grazingPanel" data-focus="#grazingForm [name='action_kind']" type="button">
+            <span class="actionIcon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M4 19c2-6 6-9 12-9h4c-1 6-5 9-11 9H4Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M8 19c2-3 5-5 9-7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span><strong>Rotacion</strong><small>Entrada o salida</small>
+          </button>
+          <button class="quickAction workforce" data-capability="workforce" data-open-panel="taskPanel" data-focus="#taskForm [name='task_id']" type="button">
+            <span class="actionIcon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M8 12.5 10.5 15 16 8.5M6 3h12v18H6V3Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M9 3V1h6v2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span><strong>Tareas</strong><small>Iniciar o completar</small>
+          </button>
+          <button class="quickAction inventory" data-capability="inventory" data-open-panel="inventoryPanel" data-focus="#inventoryForm [name='input_id']" type="button">
             <span class="actionIcon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="m4 8 8-4 8 4-8 4-8-4Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M4 8v8l8 4 8-4V8M12 12v8" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></span><strong>Bodega</strong><small>Consumo de insumos</small>
           </button>
+          <button class="quickAction receipt" data-capability="inventory" data-open-panel="receiptPanel" data-focus="#receiptForm [name='input_id']" type="button">
+            <span class="actionIcon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M4 7h16v13H4V7Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M8 4h8l2 3H6l2-3Zm4 6v6m-3-3 3 3 3-3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span><strong>Compra</strong><small>Entrada de insumos</small>
+          </button>
+          <button class="quickAction adjustment" data-capability="inventory" data-open-panel="adjustmentPanel" data-focus="#adjustmentForm [name='input_id']" type="button">
+            <span class="actionIcon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M4 7h10m4 0h2M4 17h2m4 0h10M4 12h4m4 0h8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="16" cy="7" r="2" stroke="currentColor" stroke-width="2"/><circle cx="8" cy="17" r="2" stroke="currentColor" stroke-width="2"/><circle cx="10" cy="12" r="2" stroke="currentColor" stroke-width="2"/></svg></span><strong>Ajuste</strong><small>Corregir existencias</small>
+          </button>
+          <button class="quickAction expense" data-capability="finance" data-open-panel="expensePanel" data-focus="#expenseForm [name='amount']" type="button">
+            <span class="actionIcon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M3 7a2 2 0 0 1 2-2h14v14H5a2 2 0 0 1-2-2V7Z" stroke="currentColor" stroke-width="2"/><path d="M3 8h16m-5 4h7v4h-7a2 2 0 1 1 0-4Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="15" cy="14" r=".7" fill="currentColor"/></svg></span><strong>Gasto</strong><small>Pago operativo</small>
+          </button>
+          <button class="quickAction sale" data-capability="finance" data-open-panel="salePanel" data-focus="#saleForm [name='animal_id']" type="button">
+            <span class="actionIcon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="m3 12 9-9h7l2 2v7l-9 9-9-9Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="16.5" cy="7.5" r="1.5" stroke="currentColor" stroke-width="2"/></svg></span><strong>Venta</strong><small>Salida de un animal</small>
+          </button>
         </div>
+        <p id="noModules" class="emptyState hidden">No hay formularios de campo habilitados para esta organizacion.</p>
       </section>
 
-      <section class="attentionPanel" aria-labelledby="attention-title">
+      <section id="attentionPanel" class="attentionPanel" aria-labelledby="attention-title">
         <div class="sectionHeading"><span class="eyebrow">Para hoy</span><h2 id="attention-title">Atenciones de la finca</h2></div>
         <div id="todayActions" class="todayActions"><p class="emptyState">Cargando pendientes...</p></div>
       </section>
 
       <nav class="tabs" aria-label="Captura">
-        <button class="tab active" data-panel="milkPanel" type="button">Ordeño</button>
-        <button class="tab" data-panel="reproPanel" type="button">Reproducción</button>
-        <button class="tab" data-panel="healthPanel" type="button">Sanidad</button>
-        <button class="tab" data-panel="inventoryPanel" type="button">Bodega</button>
+        <button class="tab active" data-capability="milk" data-panel="milkPanel" type="button"><span class="tabIcon" aria-hidden="true">◒</span>Ordeño</button>
+        <button class="tab" data-capability="reproduction" data-panel="reproPanel" type="button"><span class="tabIcon" aria-hidden="true">♡</span>Reproducción</button>
+        <button class="tab" data-capability="health" data-panel="healthPanel" type="button"><span class="tabIcon" aria-hidden="true">+</span>Sanidad</button>
+        <button class="tab" data-capability="growth" data-panel="weightPanel" type="button"><span class="tabIcon" aria-hidden="true">kg</span>Pesaje</button>
+        <button class="tab" data-capability="grazing" data-panel="grazingPanel" type="button"><span class="tabIcon" aria-hidden="true">↻</span>Rotacion</button>
+        <button class="tab" data-capability="workforce" data-panel="taskPanel" type="button"><span class="tabIcon" aria-hidden="true">✓</span>Tareas</button>
+        <button class="tab" data-capability="inventory" data-panel="inventoryPanel" type="button"><span class="tabIcon" aria-hidden="true">□</span>Consumo</button>
+        <button class="tab" data-capability="inventory" data-panel="receiptPanel" type="button"><span class="tabIcon" aria-hidden="true">↓</span>Compra</button>
+        <button class="tab" data-capability="inventory" data-panel="adjustmentPanel" type="button"><span class="tabIcon" aria-hidden="true">≋</span>Ajuste</button>
+        <button class="tab" data-capability="finance" data-panel="expensePanel" type="button"><span class="tabIcon" aria-hidden="true">$</span>Gasto</button>
+        <button class="tab" data-capability="finance" data-panel="salePanel" type="button"><span class="tabIcon" aria-hidden="true">◇</span>Venta</button>
       </nav>
 
-      <section id="milkPanel" class="panel active">
+      <section id="milkPanel" class="panel active" data-capability="milk">
         <form id="milkForm" class="form">
-          <label>Hacienda<select name="farm_id" data-source="farms" required></select></label>
           <label>Registrar por
             <select name="target_type">
               <option value="animal">Vaca</option>
@@ -103,9 +145,8 @@
         </form>
       </section>
 
-      <section id="reproPanel" class="panel">
+      <section id="reproPanel" class="panel" data-capability="reproduction">
         <form id="reproForm" class="form">
-          <label>Hacienda<select name="farm_id" data-source="farms" required></select></label>
           <label>Animal<select name="animal_id" data-source="animals" required></select></label>
           <label>¿Qué ocurrió?
             <select name="event_kind">
@@ -136,9 +177,8 @@
         </form>
       </section>
 
-      <section id="healthPanel" class="panel">
+      <section id="healthPanel" class="panel" data-capability="health">
         <form id="healthForm" class="form">
-          <label>Hacienda<select name="farm_id" data-source="farms" required></select></label>
           <label>Animal<select name="animal_id" data-source="animals" required></select></label>
           <label>¿Qué tiene?<input name="diagnosis" required autocomplete="off" placeholder="Ej. mastitis"></label>
           <label>Insumo<select name="input_id" data-source="inputs"></select></label>
@@ -149,9 +189,56 @@
         </form>
       </section>
 
-      <section id="inventoryPanel" class="panel">
+      <section id="weightPanel" class="panel" data-capability="growth">
+        <form id="weightForm" class="form">
+          <label>Animal<select name="animal_id" data-source="animals" required></select></label>
+          <label>Peso (kg)<input name="weight_kg" inputmode="decimal" type="number" step="0.01" min="0.01" required></label>
+          <label>Condicion corporal (1-5)<input name="body_condition_score" inputmode="decimal" type="number" step="0.1" min="1" max="5"></label>
+          <label>Fecha del pesaje<input name="weighed_on" type="date" required></label>
+          <label>Bascula o equipo<input name="scale_identifier" autocomplete="off" placeholder="Opcional"></label>
+          <label>Nota<input name="notes" autocomplete="off" placeholder="Opcional"></label>
+          <button class="primary" type="submit">Guardar pesaje</button>
+        </form>
+      </section>
+
+      <section id="grazingPanel" class="panel" data-capability="grazing">
+        <form id="grazingForm" class="form">
+          <label>Movimiento
+            <select name="action_kind">
+              <option value="start">Entrada a potrero</option>
+              <option value="finish">Salida de potrero</option>
+            </select>
+          </label>
+          <label data-grazing-mode="start">Potrero<select name="paddock_id" data-source="paddocks" required></select></label>
+          <label data-grazing-mode="start">Lote de animales<select name="group_id" data-source="groups" required></select></label>
+          <label data-grazing-mode="finish" class="hidden">Rotacion activa<select name="grazing_period_id" data-source="active_grazing"></select></label>
+          <label>Fecha<input name="occurred_on" type="date" required></label>
+          <label data-grazing-mode="start">Salida prevista<input name="planned_end_on" type="date" data-no-default></label>
+          <label data-grazing-mode="start">Numero de animales<input name="head_count" inputmode="numeric" type="number" min="1" placeholder="Usar animales del lote"></label>
+          <label>Biomasa (kg/ha)<input name="biomass_kg_ha" inputmode="decimal" type="number" step="0.01" min="0.01"></label>
+          <label>Nota<input name="notes" autocomplete="off" placeholder="Opcional"></label>
+          <button class="primary" type="submit">Guardar movimiento</button>
+        </form>
+      </section>
+
+      <section id="taskPanel" class="panel" data-capability="workforce">
+        <form id="taskForm" class="form">
+          <label>Tarea<select name="task_id" data-source="work_tasks" required></select></label>
+          <label>Accion
+            <select name="action_kind">
+              <option value="start">Iniciar tarea</option>
+              <option value="complete">Completar tarea</option>
+            </select>
+          </label>
+          <label>Trabajador<select name="worker_id" data-source="workers"></select></label>
+          <label data-task-mode="complete" class="hidden">Horas trabajadas<input name="hours" inputmode="decimal" type="number" step="0.25" min="0.01"></label>
+          <label>Resultado o novedad<input name="notes" autocomplete="off" placeholder="Opcional"></label>
+          <button class="primary" type="submit">Guardar avance</button>
+        </form>
+      </section>
+
+      <section id="inventoryPanel" class="panel" data-capability="inventory">
         <form id="inventoryForm" class="form">
-          <label>Hacienda<select name="farm_id" data-source="farms" required></select></label>
           <label>Insumo<select name="input_id" data-source="inputs" required></select></label>
           <label>Cantidad<input name="quantity" inputmode="decimal" type="number" step="0.001" min="0.001" required></label>
           <label>Animal opcional<select name="animal_id" data-source="animals"></select></label>
@@ -161,8 +248,60 @@
         </form>
       </section>
 
+      <section id="receiptPanel" class="panel" data-capability="inventory">
+        <form id="receiptForm" class="form">
+          <label>Insumo<select name="input_id" data-source="inputs" required></select></label>
+          <label>Cantidad recibida<input name="quantity" inputmode="decimal" type="number" step="0.001" min="0.001" required></label>
+          <label>Costo unitario<input name="unit_cost" inputmode="decimal" type="number" step="0.0001" min="0" placeholder="Usar costo habitual"></label>
+          <label>Lote del proveedor<input name="lot_code" autocomplete="off"></label>
+          <label>Fecha de vencimiento<input name="expires_on" type="date" data-no-default></label>
+          <label>Nota (opcional)<input name="notes" autocomplete="off" placeholder="Ej. factura o proveedor"></label>
+          <button class="primary" type="submit">Guardar compra</button>
+        </form>
+      </section>
+
+      <section id="adjustmentPanel" class="panel" data-capability="inventory">
+        <form id="adjustmentForm" class="form">
+          <label>Insumo<select name="input_id" data-source="inputs" required></select></label>
+          <label>Diferencia de cantidad<input name="quantity_delta" inputmode="decimal" type="number" step="0.001" required placeholder="Ej. -2 o 3"></label>
+          <label>Motivo<input name="reason" required autocomplete="off" placeholder="Ej. conteo físico"></label>
+          <label>Animal opcional<select name="animal_id" data-source="animals"></select></label>
+          <label>Lote opcional<select name="group_id" data-source="groups"></select></label>
+          <button class="primary" type="submit">Guardar ajuste</button>
+        </form>
+      </section>
+
+      <section id="expensePanel" class="panel" data-capability="finance">
+        <form id="expenseForm" class="form">
+          <label>Monto<input name="amount" inputmode="decimal" type="number" step="0.01" min="0.01" required></label>
+          <label>Tipo de gasto
+            <select name="cost_type" required>
+              <option value="labor">Mano de obra</option>
+              <option value="service">Servicio</option>
+              <option value="supply">Suministro sin bodega</option>
+              <option value="other">Otro</option>
+            </select>
+          </label>
+          <label>Fecha<input name="cost_date" type="date" required></label>
+          <label>Animal opcional<select name="animal_id" data-source="animals"></select></label>
+          <label>Lote opcional<select name="group_id" data-source="groups"></select></label>
+          <label>Detalle<input name="notes" autocomplete="off" placeholder="Ej. reparación de cerca"></label>
+          <button class="primary" type="submit">Guardar gasto</button>
+        </form>
+      </section>
+
+      <section id="salePanel" class="panel" data-capability="finance">
+        <form id="saleForm" class="form">
+          <label>Animal vendido<select name="animal_id" data-source="animals" required></select></label>
+          <label>Valor de venta<input name="amount" inputmode="decimal" type="number" step="0.01" min="0.01" required></label>
+          <label>Fecha<input name="sale_date" type="date" required></label>
+          <label>Detalle<input name="notes" autocomplete="off" placeholder="Ej. comprador o comprobante"></label>
+          <button class="saleButton" type="submit">Guardar venta</button>
+        </form>
+      </section>
+
       <section class="queuePanel">
-        <h2>Eventos pendientes</h2>
+        <h2>Pendientes de sincronizar</h2>
         <ol id="queueList"></ol>
         <div class="queueActions">
           <button id="retryQueue" class="secondary" type="button">Reintentar pendientes</button>

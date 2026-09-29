@@ -1,30 +1,176 @@
 # KORE AGRO
 
-ERP agricola integral para haciendas ganaderas y lecheras medianas en la region andina y tropical, desarrollado bajo la marca Binnso: "Soluciones a tu medida".
+Plataforma modular de gestion agroproductiva del ecosistema KORE de BINNSO,
+desarrollada bajo una sola marca: **KORE Agro**.
 
-Este repositorio sera el roadmap tecnico y funcional del producto. Aunque los modulos aun no esten construidos, este documento define la direccion arquitectonica, las restricciones de stack y el criterio de desarrollo para KORE AGRO.
+Este repositorio contiene la implementacion actual y el mapa tecnico-funcional del
+producto. Ganaderia y leche son la primera solucion operativa, no una aplicacion
+separada ni el limite futuro de la plataforma.
+
+## Mapa Del Documento
+
+- [Vision e identidad comercial](#vision-del-producto).
+- [Perfiles, capacidades y permisos](#modelo-de-configuracion).
+- [Capacidades y flujo compartido](#mapa-de-capacidades).
+- [Arquitectura modular](#arquitectura-modular-objetivo).
+- [Estado de implementacion](#estado-de-implementacion).
+- [Sincronizacion offline](#modelo-de-sincronizacion-offline).
+- [Roadmap de plataforma](#roadmap-de-la-plataforma).
+- [Desarrollo local](#desarrollo-local).
 
 ## Vision Del Producto
 
-KORE AGRO busca democratizar la toma de decisiones basada en datos para haciendas de 30 a 250 cabezas, con foco inicial en Ecuador.
+KORE Agro centraliza la operacion de empresas, asociaciones y organizaciones del
+sector agro sin crear un sistema distinto para cada cadena productiva. Una misma
+organizacion puede producir, acopiar, procesar y comercializar uno o varios productos.
+
+El foco inicial es Ecuador y la primera vertical implementada atiende haciendas
+ganaderas y lecheras de 30 a 250 cabezas. El nucleo debe crecer hacia cafe, cacao,
+leche, granos, frutas y otras cadenas mediante perfiles, capacidades y reglas
+configurables.
 
 El objetivo es igualar la profundidad biologica de soluciones como UNIFORM-Agri o DairyComp, pero superarlas al integrar:
 
-- Gestion biologica del hato.
+- Gestion biologica y economica del hato como primera solucion vertical.
+- Operaciones compartidas de productores, recepcion, pesaje, calidad y lotes.
 - P&L financiero real por animal, lote, potrero y hacienda.
 - Operacion offline-first para trabajo de campo.
 - Cumplimiento local: LOPDP, SRI Ecuador, Agrocalidad.
 - Contexto andino y tropical: clima, pastoreo rotacional, doble proposito y sanidad local.
 
+## Identidad Comercial
+
+El producto siempre se presenta como **KORE Agro**. Las variantes comerciales son
+soluciones configuradas sobre la misma plataforma y el mismo codigo:
+
+- KORE Agro para Ganaderia.
+- KORE Agro para Cafe.
+- KORE Agro para Cacao.
+- KORE Agro para Centros de Acopio.
+- KORE Agro para Procesamiento y Comercializacion.
+
+Estas variantes no deben convertirse en repositorios, despliegues o aplicaciones
+independientes. Una mejora en un motor compartido debe beneficiar a todas las cadenas
+que lo utilizan.
+
+## Modelo De Configuracion
+
+KORE Agro separa explicitamente cuatro conceptos:
+
+| Concepto | Pregunta que responde | Ejemplo |
+| --- | --- | --- |
+| Organizacion o tenant | Quien es propietario y responsable de los datos | Hacienda, empresa, asociacion o cooperativa |
+| Perfil de empresa | Que tipo de operacion realiza | Ganaderia, Cafe, Cacao, Centro de Acopio |
+| Capacidad o modulo | Que funcionalidad tiene habilitada o contratada | Calidad, inventario, liquidaciones, ventas |
+| Rol y permiso | Que puede consultar o ejecutar una persona | Propietario, administrador, tecnico, trabajador |
+
+Una organizacion puede tener varios perfiles activos al mismo tiempo. Los perfiles
+aportan contexto, vocabulario, formularios y reglas predeterminadas; las capacidades
+habilitan funciones concretas. Los permisos se aplican despues y nunca sustituyen a
+los perfiles ni a las capacidades.
+
+Ejemplos:
+
+- Una finca puede activar `Ganaderia` y `Centro de Acopio` para producir leche y
+  recibir leche de terceros.
+- Una asociacion puede activar `Cacao` y `Centro de Acopio`, con recepcion, calidad,
+  lotes, liquidaciones, inventario y comercializacion.
+- Dos centros de acopio pueden compartir perfil, pero contratar capacidades distintas.
+
+La activacion debe validarse en navegacion, vistas, API y servicios de aplicacion. No
+basta con ocultar una opcion del menu.
+
+Modelo conceptual minimo para implementar esta capa:
+
+- `ProfileDefinition`: catalogo versionado de perfiles disponibles.
+- `OrganizationProfile`: perfiles activos para una organizacion, con vigencia.
+- `CapabilityDefinition`: registro estable de capacidades y sus dependencias.
+- `OrganizationCapability`: capacidades habilitadas, contratadas o suspendidas.
+- `ProfileConfiguration`: parametros tipados por perfil, producto o unidad operativa.
+
+La autorizacion efectiva se resuelve como la interseccion de:
+
+```text
+capacidad habilitada
+  + compatibilidad con perfiles activos
+  + permiso del usuario
+  + alcance de finca/sede asignado
+  = accion permitida
+```
+
+Los nombres comerciales y textos de interfaz pueden cambiar por perfil, pero las
+claves internas de capacidades y eventos deben permanecer estables.
+
+## Mapa De Capacidades
+
+### Nucleo Compartido
+
+- Organizaciones, sedes, fincas, ubicaciones y unidades operativas.
+- Usuarios, roles, permisos, asignaciones de campo y dispositivos.
+- Productores, clientes, proveedores y demas contrapartes.
+- Productos, variedades, presentaciones y unidades de medida.
+- Inventario, bodegas, movimientos, costos y documentos.
+- Lotes, trazabilidad, auditoria, eventos y sincronizacion offline.
+- Finanzas operativas, compras, ventas, cobros, pagos y reportes.
+
+### Capacidades Por Perfil
+
+| Perfil | Capacidades propias o especializadas |
+| --- | --- |
+| Ganaderia | Hato, genealogia, reproduccion, sanidad, pesajes, crecimiento, leche y pastoreo |
+| Cafe | Productores, cosecha, recepcion, humedad, calidad, beneficio, lotes y trazabilidad |
+| Cacao | Productores, recepcion, fermentacion, secado, calidad, lotes y trazabilidad |
+| Centro de Acopio | Turnos, recepcion, pesaje, muestreo, calidad, liquidacion, almacenamiento y despacho |
+| Procesamiento | Ordenes, transformaciones, consumos, rendimientos, mermas y subproductos |
+| Comercializacion | Precios, contratos, pedidos, ventas, documentos, despacho y cartera |
+
+Las capacidades compartidas se implementan una sola vez. Cada perfil agrega
+configuracion y extensiones de dominio solo cuando una regla realmente es especifica.
+
+## Flujo Agroproductivo Comun
+
+El motor operativo objetivo reutiliza este flujo entre productos:
+
+```text
+Productor o proveedor
+        |
+        v
+Recepcion -> Pesaje -> Control de calidad -> Lote -> Liquidacion
+                                      |                    |
+                                      v                    v
+                              Inventario/Proceso      Cuenta por pagar
+                                      |
+                                      v
+                            Venta -> Despacho -> Documento
+```
+
+Cafe, cacao, leche u otro producto deben compartir las entidades y servicios del
+flujo. Las diferencias se expresan con definiciones de producto, unidades, esquemas
+de calidad, conversiones, reglas de precio y pasos de proceso versionados. Se deben
+evitar copias como `RecepcionCafe`, `RecepcionCacao` y `RecepcionLeche` cuando el
+comportamiento base sea el mismo.
+
 ## Principios Arquitectonicos
 
-- **Multi-tenant por schemas PostgreSQL:** aislamiento fuerte de datos por cliente/hacienda para cumplimiento LOPDP.
+- **Un producto y un codigo:** las cadenas productivas se configuran; no se bifurcan.
+- **Monolito modular primero:** dominios cohesionados, contratos internos claros y
+  posibilidad de extraer servicios solo cuando exista una necesidad comprobada.
+- **Multi-tenant por schemas PostgreSQL:** cada organizacion tiene aislamiento fuerte;
+  dentro de su tenant puede administrar varias fincas, sedes o unidades operativas.
+- **Perfiles y capacidades combinables:** ninguna regla debe asumir que un tenant tiene
+  un unico tipo de operacion.
+- **Motores compartidos:** recepcion, pesaje, calidad, lotes, liquidaciones, inventario,
+  costos, ventas, documentos y auditoria se reutilizan entre perfiles.
 - **UUIDv4 en tablas transaccionales:** prohibido depender de IDs autoincrementales para entidades creadas desde campo.
 - **Offline-first real:** la PWA registra eventos en una cola local FIFO y sincroniza cuando existe conectividad.
 - **Event-driven para acciones de campo:** la aplicacion movil no debe mutar estados finales directamente; envia eventos que el backend valida, aplica y audita.
-- **Costeo real en tiempo real:** toda accion biologica con impacto economico debe descontar inventario y registrar costo.
+- **Costeo real en tiempo real:** toda accion biologica u operativa con impacto
+  economico debe actualizar inventario, ingresos o costos segun corresponda.
 - **Automatizacion asincrona:** Celery + Redis para integraciones gubernamentales, procesos de sync, alertas y calculos pesados.
-- **Interfaces sobrias:** frontend administrativo con HTMX + Tailwind CSS, dark mode ejecutivo, alta densidad de informacion y minima friccion operativa.
+- **Experiencia contextual:** menus, formularios, lenguaje, reportes y PWA muestran solo
+  lo aplicable a los perfiles, capacidades y permisos del usuario.
+- **Reglas en servidor:** ocultar controles no reemplaza la validacion de capacidades,
+  permisos y tenant en API y servicios de aplicacion.
 
 ## Stack Tecnologico Obligatorio
 
@@ -40,13 +186,32 @@ El objetivo es igualar la profundidad biologica de soluciones como UNIFORM-Agri 
 
 ## Dominios Funcionales
 
-### Core Biologico
+### Plataforma Compartida
 
-- Gestion de hato y genealogia.
-- Reproduccion: celos, IA, monta natural, diagnosticos de prenez, secados, partos y dias abiertos.
+- Tenancy, identidad, perfiles, capacidades, permisos y auditoria.
+- Contrapartes: productores, proveedores, clientes, transportistas y asociaciones.
+- Estructura territorial: fincas, sedes, parcelas, potreros, bodegas y puntos de acopio.
+- Catalogo de productos, variedades, unidades, presentaciones y conversiones.
+- Recepcion, pesaje, calidad, lotes, trazabilidad, liquidacion, inventario y despacho.
+- Compras, ventas, costos, documentos, cartera y analitica operativa.
+
+### Vertical Ganadera Inicial
+
+- Hato, genealogia, lotes, potreros y ciclo de vida.
+- Reproduccion: celos, IA, monta, diagnosticos, secados, partos y dias abiertos.
 - Produccion lechera: registros por jornada, curvas de lactancia, RCS y calidad.
-- Salud y veterinaria: historiales clinicos, vacunacion, podologia y tratamientos.
-- Inventario y bodega: medicamentos, semen, balanceados, concentrados y suplementos.
+- Salud: historial clinico, vacunacion, podologia, tratamientos y retiros.
+- Pesajes: condicion corporal, ganancia diaria, proyecciones y costo por kg ganado.
+- Inventario ganadero: medicamentos, semen, balanceados y suplementos.
+
+### Verticales Agroproductivas
+
+- Cafe y cacao: productor, cosecha, recepcion, humedad, clasificacion, fermentacion,
+  secado, almacenamiento, lotes y calidad.
+- Acopio: turnos, recepcion, pesaje bruto/tara/neto, muestreo, descuentos,
+  liquidaciones, inventario y despacho.
+- Procesamiento: ordenes, transformaciones, rendimientos, mermas y subproductos.
+- Comercializacion: listas de precios, contratos, pedidos, ventas, despacho y cartera.
 
 ### Diferenciadores KORE AGRO
 
@@ -58,22 +223,96 @@ El objetivo es igualar la profundidad biologica de soluciones como UNIFORM-Agri 
 - Preparacion para facturacion electronica SRI Ecuador.
 - Cumplimiento LOPDP desde el diseno de datos, auditoria y tenancy.
 
-## Arquitectura Objetivo
+## Arquitectura Modular Objetivo
+
+La siguiente estructura es el mapa de dominios, no una afirmacion de que todos los
+paquetes ya estan implementados:
 
 ```text
 apps/
-  tenants/          # Clientes, haciendas, schemas y contexto tenant-aware
-  identity/         # Usuarios, roles, permisos y auditoria
-  herd/             # Animales, genealogia, lotes, potreros y ciclo de vida
-  reproduction/     # Eventos reproductivos, proyecciones y listas de atencion
-  milk/             # Ordenos, lactancias, calidad y RCS
-  health/           # Clinica, tratamientos, vacunacion y retiro de leche
-  inventory/        # Stock, movimientos, costos unitarios y lotes de insumo
-  finance/          # P&L operativo, centros de costo y trazabilidad economica
-  grazing/          # Potreros, aforos, rotaciones, carga animal y clima
-  integrations/     # INAMHI, MAG, Agrocalidad, SRI
-  sync/             # Action Queue, eventos offline, resolucion de conflictos
+  tenants/           # Organizaciones, schemas y contexto tenant-aware
+  identity/          # Usuarios, roles, permisos, asignaciones y dispositivos
+  configuration/     # Perfiles, capacidades, parametros y feature registry
+  parties/           # Productores, proveedores, clientes y transportistas
+  locations/         # Sedes, fincas, parcelas, potreros, bodegas y puntos de acopio
+  catalog/           # Productos, variedades, unidades y conversiones
+  reception/         # Entregas, turnos, pesaje bruto/tara/neto y comprobantes
+  quality/           # Muestreo, esquemas de calidad, resultados y descuentos
+  lots/              # Lotes fisicos, mezcla, division y trazabilidad
+  settlements/       # Precios, bonificaciones, descuentos y liquidaciones
+  inventory/         # Stock, movimientos, costos unitarios y lotes de insumo/producto
+  processing/        # Transformaciones, rendimientos, mermas y subproductos
+  commerce/          # Compras, ventas, pedidos, cartera y despacho
+  documents/         # Comprobantes, guias, facturacion y archivos
+  finance/           # P&L, centros de costo y trazabilidad economica
+  herd/              # Animales, genealogia, lotes y ciclo de vida
+  growth/            # Pesajes, ganancia diaria, proyecciones y comparacion por lote
+  reproduction/      # Eventos reproductivos, proyecciones y listas de atencion
+  milk/              # Ordenos, lactancias, calidad y RCS
+  health/            # Clinica, tratamientos, vacunacion y retiro de leche
+  grazing/           # Potreros, aforos, rotaciones, carga animal y clima
+  audit/             # Bitacora transversal y trazabilidad de cambios
+  integrations/      # INAMHI, MAG, Agrocalidad, SRI y adaptadores externos
+  sync/              # Action Queue, eventos offline y resolucion de conflictos
+  dashboard/         # Composicion contextual de vistas, menus y reportes
 ```
+
+### Reglas Entre Dominios
+
+- Cada dominio es propietario de sus modelos y reglas; otros dominios lo invocan por
+  servicios de aplicacion o eventos, no escribiendo sus tablas directamente.
+- Los modulos comunes no importan verticales especificas. Una extension ganadera o de
+  cafe puede depender del nucleo, pero el nucleo no debe depender de ella.
+- No se crea un modulo por cadena cuando las diferencias son solo etiquetas,
+  parametros, unidades o reglas configurables.
+- Las reglas variables por producto usan configuraciones tipadas y versionadas. Se
+  evita convertir el dominio completo en campos JSON sin contrato.
+- Un evento conserva origen, actor, organizacion, dispositivo, fecha efectiva y
+  version de esquema para auditoria e idempotencia.
+- Una futura extraccion a microservicio debe preservar estos contratos; no se crean
+  microservicios antes de que escala, equipo o integracion lo justifiquen.
+
+## Estado De Implementacion
+
+| Area | Estado actual |
+| --- | --- |
+| Multi-tenancy por schema | Implementado |
+| Roles, acceso administrativo y asignacion de trabajador a hacienda | Implementado |
+| Hato, lotes y fincas | Implementado en alcance ganadero inicial |
+| Ordeño, reproduccion, sanidad y retiro de leche | Implementado |
+| Pesajes, ganancia diaria, proyeccion e historial del animal | Implementado |
+| Potreros, ocupacion, descanso y rotacion de lotes | Implementado en alcance operativo inicial |
+| Personal, tareas, jornadas y costo de mano de obra | Implementado en alcance operativo inicial |
+| Inventario, recepcion de insumos, consumos, ajustes y kardex | Implementado |
+| P&L por hacienda, lote y animal | Implementado |
+| PWA offline, cola FIFO, idempotencia y conflictos | Implementado |
+| Panel superadmin, perfiles y registro de capacidades | Implementado en esquema publico |
+| Menus, rutas, API y PWA gobernados por capacidades | Implementado |
+| Productores y contrapartes compartidas | Por construir |
+| Recepcion agroproductiva, calidad, lotes y liquidaciones | Por construir |
+| Procesamiento, despacho y comercializacion general | Por construir |
+| Proveedores y compras completas | Por construir |
+
+### Panel Superadmin
+
+El plano de control de BINNSO vive en el esquema `public` y usa un dominio distinto
+al de las organizaciones. Solo admite usuarios `is_superuser` del esquema publico.
+
+Permite:
+
+- Consultar organizaciones activas, en prueba y proximas a vencer.
+- Crear el tenant, dominio y propietario inicial de una organizacion.
+- Asignar varios perfiles operativos.
+- Habilitar capacidades y sus dependencias tecnicas.
+- Mantener el catalogo global de perfiles y capacidades.
+
+Las capacidades activas se aplican dentro de cada tenant en cuatro niveles: menu
+contextual, proteccion de URLs, catalogo de formularios de la PWA y validacion de cada
+evento offline antes de registrarlo. Ocultar una opcion visual no sustituye la regla
+del servidor.
+
+Los propietarios creados dentro de un tenant no pueden ingresar al panel de
+plataforma. La separacion se valida tanto por schema como por permisos.
 
 ## Modelo De Sincronizacion Offline
 
@@ -106,7 +345,30 @@ El backend debe:
 - Registrar auditoria completa.
 - Devolver ack, errores recuperables o conflictos al cliente.
 
-## Roadmap De Desarrollo
+## Roadmap De La Plataforma
+
+El orden recomendado protege el producto actual y evita duplicar dominios al abrir
+nuevas cadenas:
+
+1. **Infraestructura de control:** panel superadmin, perfiles, capacidades,
+   aprovisionamiento de tenants y aplicacion contextual implementados como base;
+   continuar con auditoria de cambios y observabilidad operativa.
+2. **Consolidar Ganaderia:** pesajes, historial, potreros, rotacion, personal y tareas
+   operativas ya implementados; continuar con proveedores y compras.
+3. **Construir el nucleo agroproductivo compartido:** contrapartes, catalogo,
+   recepcion, pesaje, calidad, lotes, trazabilidad, liquidaciones y despacho.
+4. **Activar Centro de Acopio:** primer perfil que pruebe el flujo compartido completo,
+   inicialmente con una sola familia de producto.
+5. **Agregar Cafe y Cacao:** incorporar esquemas de calidad, procesos y reglas de precio
+   propias sin duplicar los motores comunes.
+6. **Profundizar procesamiento y comercializacion:** transformaciones, rendimientos,
+   contratos, cartera, documentos e integraciones regulatorias.
+
+Cada etapa debe entregar un flujo vertical util, con pruebas de aislamiento tenant,
+capacidades, trazabilidad y costos. No se deben crear todos los modelos genericos de
+una vez sin una operacion real que los valide.
+
+## Roadmap De La Solucion Ganadera Inicial
 
 ### Fase 0 - Fundacion Tecnica
 
@@ -145,8 +407,16 @@ Alcance funcional:
   - Cada evento usa UUIDv4 generado en cliente.
   - La cola se transmite FIFO cuando vuelve la conectividad.
   - El backend valida idempotencia, aplica reglas de negocio y responde ack/conflicto/error recuperable.
+  - La PWA muestra primero el cache local, envia pendientes y despues actualiza sus catalogos.
+  - No existe un modo manual online/offline: la transicion es automatica.
+- Contexto de hacienda:
+  - Cada trabajador de campo puede tener una `FieldAssignment` a una sola hacienda.
+  - Con una hacienda asignada, los formularios la usan automaticamente y no la solicitan.
+  - Propietarios y administradores con varias haciendas usan un selector global.
+  - Bootstrap y sincronizacion validan el acceso a la hacienda en el servidor.
 - Eventos core del MVP:
   - Ordeno diario: litros por vaca o por lote.
+  - Pesaje con condicion corporal, ganancia diaria y proyeccion a peso objetivo.
   - Celo.
   - Inseminacion o monta.
   - Parto.
@@ -268,6 +538,11 @@ Estas capacidades quedan explicitamente fuera de la Fase 1 para proteger time-to
 
 - Modelos de dominio explicitos y auditables.
 - Servicios de aplicacion para reglas complejas; evitar logica critica dispersa en vistas.
+- Registro central de perfiles y capacidades, sin condicionales de producto repetidos
+  en plantillas, vistas y servicios.
+- Dependencias orientadas desde verticales hacia motores compartidos, nunca al reves.
+- Configuraciones de calidad, unidades y precios tipadas, validadas y versionadas.
+- Pruebas de combinaciones de perfiles y capacidades, incluida la denegacion en API.
 - Vistas administrativas HTMX simples, rapidas y orientadas a decision.
 - Tareas Celery idempotentes.
 - Integraciones externas desacopladas mediante adaptadores.
@@ -293,6 +568,7 @@ Base de datos local:
 poetry run python -c "import psycopg; conn=psycopg.connect('postgresql://postgres:postgres@localhost:5432/postgres', autocommit=True); conn.execute('CREATE DATABASE kore_agro'); conn.close()"
 poetry run python manage.py migrate_schemas --shared
 poetry run python manage.py bootstrap_demo_tenant
+poetry run python manage.py bootstrap_platform --username superadmin --password "cambiar-esta-clave"
 ```
 
 Servidor:
@@ -301,19 +577,19 @@ Servidor:
 poetry run python manage.py runserver 127.0.0.1:8000
 # Si 8000 esta ocupado:
 poetry run python manage.py runserver 127.0.0.1:8010
-# En esta sesion se uso:
-poetry run python manage.py runserver 127.0.0.1:8020
 ```
 
 URLs locales:
 
-- Dashboard administrativo: `http://localhost:8000/`
-- Finanzas P&L: `http://localhost:8000/finanzas/`
-- Datos MVP: `http://localhost:8000/datos/`
-- PWA de campo: `http://localhost:8000/field/`
-- API bootstrap campo: `http://localhost:8000/api/field/bootstrap`
-- API sync eventos: `http://localhost:8000/api/sync/events`
-- Servidor activo en esta sesion: `http://localhost:8020/`
+- Panel superadmin: `http://127.0.0.1:8010/`
+- Organizacion demo: `http://localhost:8010/`
+- Dashboard administrativo: `http://localhost:8010/`
+- Finanzas P&L: `http://localhost:8010/finanzas/`
+- Pesajes y crecimiento: `http://localhost:8010/crecimiento/`
+- Datos MVP: `http://localhost:8010/datos/`
+- PWA de campo: `http://localhost:8010/field/`
+- API bootstrap campo: `http://localhost:8010/api/field/bootstrap`
+- API sync eventos: `http://localhost:8010/api/sync/events`
 
 ## Operacion De Piloto
 
@@ -366,6 +642,12 @@ Estado actual:
 - Semana 4 aplicada: cierre de periodo automatizado con Celery, idempotente por tenant.
 - Semana 4 aplicada: kardex de movimientos de bodega en `/datos/`.
 - Semana 4 corregida: migracion faltante de `OperatingPeriodSnapshot` (venia rota de Semana 3).
+- Crecimiento aplicado: pesajes online/offline, ganancia diaria, proyeccion y costo directo/kg.
+- Historia del animal aplicada: linea de tiempo unificada de peso, reproduccion, salud,
+  leche, inventario y finanzas.
+- Vision de plataforma definida: una marca, perfiles combinables, capacidades
+  contratables y motores agroproductivos compartidos.
+- Panel superadmin aplicado en el esquema publico con aprovisionamiento de tenants.
 
 ## Eventos Con Impacto Economico
 
@@ -382,6 +664,7 @@ Todos son idempotentes por `event_id` y quedan trazados en `/finanzas/`.
 | `inventory.stock_adjusted` | Corrige conteo fisico | Faltante = merma; sobrante = solo stock |
 | `finance.expense_recorded` | Ninguno | Mano de obra, servicios y fletes |
 | `herd.animal_sold` | Marca el animal como vendido | Ingreso por venta de animal |
+| `growth.weight_recorded` | Registra peso, condicion y lote historico | Permite costo directo por kg ganado |
 
 ### Regla De Retiro De Leche
 
@@ -393,7 +676,12 @@ lo realmente vendible.
 
 ## Decisiones Pendientes
 
-- Politicas de conflicto por dominio offline.
-- Estructura comercial por tenant: hacienda unica, multi-hacienda o grupo empresarial.
+- Catalogo inicial de perfiles y capacidades comercializables.
+- Primer producto para validar el motor comun de centro de acopio.
+- Modelo de contrapartes y relacion productor-organizacion.
+- Versionado de esquemas de calidad, conversiones y reglas de liquidacion.
+- Politicas de conflicto offline para recepciones, pesajes y lotes compartidos.
+- Estrategia de migracion de `Farm` hacia una estructura comun de sedes y ubicaciones
+  sin romper el dominio ganadero existente.
 - Precio de leche y estructura de costos inicial para pilotos.
 - Alcance juridico final de guias de movilizacion y firma electronica SRI.

@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+
+{% block title %}Modulo no habilitado - KORE Agro{% endblock %}
+
+{% block content %}
+  <section class="mx-auto max-w-2xl py-12">
+    <p class="text-xs font-bold uppercase text-emerald-700">Acceso contextual</p>
+    <h1 class="mt-2 text-3xl font-semibold text-emerald-950">Este modulo no esta habilitado</h1>
+    <p class="mt-3 text-stone-600">
+      La organizacion no tiene activa la capacidad requerida para esta operacion.
+      Solicita al administrador de KORE Agro que revise su configuracion.
+    </p>
+    <p class="mt-4 text-sm text-stone-500">Capacidad: {{ required_capabilities|join:", " }}</p>
+    <a class="mt-6 inline-block rounded bg-emerald-800 px-4 py-2 text-sm font-semibold text-white" href="/">Volver al inicio</a>
+  </section>
+{% endblock %}

@@ -1,5 +1,5 @@
 :root {
-  color-scheme: dark;
+  color-scheme: light;
   --bg: #f5f1e7;
   --panel: #fffefa;
   --panel-2: #e5eddb;
@@ -34,6 +34,7 @@ body {
   padding: 1rem;
   border-bottom: 1px solid var(--border);
   background: rgba(20, 38, 29, 0.96);
+  color: #f7faf7;
 }
 
 .brand,
@@ -82,12 +83,13 @@ h2 {
   margin-top: 0.25rem;
   font-family: Georgia, serif;
   font-size: 1.55rem;
+  color: #f7faf7;
 }
 
 .fieldHero p {
   max-width: 28rem;
   margin: 0.5rem 0 0;
-  color: var(--muted);
+  color: #cfdbcf;
   font-size: 0.9rem;
   line-height: 1.45;
 }
@@ -113,6 +115,57 @@ h2 {
   height: 100%;
 }
 
+.farmContext {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.85rem 1rem;
+  border: 1px solid #b8c8ae;
+  border-radius: 0.5rem;
+  background: #edf3e8;
+}
+
+.farmContext.noFarm {
+  border-color: #d69a94;
+  background: #fff1ef;
+}
+
+.farmContextIcon {
+  display: grid;
+  width: 2.5rem;
+  height: 2.5rem;
+  place-items: center;
+  border-radius: 50%;
+  background: #294b30;
+  color: #f6d57b;
+}
+
+.farmContextIcon svg {
+  width: 1.4rem;
+  height: 1.4rem;
+}
+
+.farmContextName {
+  min-width: 0;
+}
+
+.farmContextName strong {
+  display: block;
+  margin-top: 0.18rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.farmSwitcher {
+  grid-column: 1 / -1;
+}
+
+.farmSwitcher.hidden {
+  display: none;
+}
+
 .sectionHeading {
   display: flex;
   flex-direction: column;
@@ -133,11 +186,19 @@ h2 {
 
 .quickAction {
   display: grid;
-  min-height: 9.25rem;
+  min-height: 7.5rem;
   padding: 0.85rem;
   border-width: 2px;
   text-align: left;
   transition: transform 160ms ease, filter 160ms ease;
+}
+
+.quickAction:hover {
+  filter: brightness(1.07);
+}
+
+.quickAction.active {
+  box-shadow: 0 0 0 3px var(--panel), 0 0 0 5px var(--text);
 }
 
 .quickAction:active {
@@ -165,7 +226,12 @@ h2 {
 .quickAction.milk { background: #315c74; border-color: #78c9d9; color: #effffb; }
 .quickAction.repro { background: #70404a; border-color: #e29a91; color: #fff5e8; }
 .quickAction.health { background: #7a5732; border-color: #f3bd70; color: #fff8e7; }
+.quickAction.weight { background: #315f50; border-color: #75c6a2; color: #f0fff8; }
 .quickAction.inventory { background: #48603a; border-color: #a9c86a; color: #fbffe8; }
+.quickAction.receipt { background: #365e64; border-color: #7bc7c8; color: #f0ffff; }
+.quickAction.adjustment { background: #584d72; border-color: #b8a6df; color: #faf7ff; }
+.quickAction.expense { background: #675a30; border-color: #e4c96e; color: #fffbea; }
+.quickAction.sale { background: #743f3b; border-color: #e69a8f; color: #fff5f2; }
 
 .attentionPanel,
 .quickSection {
@@ -246,10 +312,16 @@ h2 {
   white-space: nowrap;
 }
 
+#networkState[data-state="online"] { color: #287347; }
+#networkState[data-state="offline"] { color: var(--danger); }
+#networkState[data-state="syncing"] { color: #8a651d; }
+
 .tabs {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  display: flex;
   gap: 0.5rem;
+  overflow-x: auto;
+  padding: 0.15rem 0.1rem 0.45rem;
+  scrollbar-width: thin;
 }
 
 button,
@@ -259,7 +331,7 @@ select {
   min-height: 2.75rem;
   border: 1px solid var(--border);
   border-radius: 0.45rem;
-  background: #020617;
+  background: #fff;
   color: var(--text);
   font: inherit;
 }
@@ -272,6 +344,9 @@ button {
 .iconButton {
   width: 2.75rem;
   flex: 0 0 2.75rem;
+  border-color: #6c8951;
+  background: transparent;
+  color: var(--accent);
 }
 
 .syncIcon {
@@ -280,12 +355,31 @@ button {
 }
 
 .tab {
+  display: inline-flex;
+  flex: 0 0 7.5rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-height: 3rem;
+  padding: 0 0.6rem;
   color: var(--muted);
+  font-size: 0.78rem;
 }
 
 .tab.active {
   border-color: var(--accent);
+  background: #fff9e9;
   color: var(--accent);
+}
+
+.tabIcon {
+  display: grid;
+  width: 1.35rem;
+  height: 1.35rem;
+  flex: 0 0 1.35rem;
+  place-items: center;
+  font-size: 1.1rem;
+  line-height: 1;
 }
 
 .panel {
@@ -304,7 +398,12 @@ button {
 #milkPanel::before { content: "Registra los litros. El sistema calcula el valor y avisa si hay retiro de leche."; }
 #reproPanel::before { content: "Anota el evento al momento. El arete es suficiente para encontrar la vaca."; }
 #healthPanel::before { content: "Registra el tratamiento para controlar el retiro de leche y el costo."; }
+#weightPanel::before { content: "Registra el peso para calcular la ganancia diaria y detectar animales rezagados."; }
 #inventoryPanel::before { content: "Registra lo que salió de bodega para que no falte ni se pierda."; }
+#receiptPanel::before { content: "Registra las compras cuando entran a bodega, con cantidad, costo y lote."; }
+#adjustmentPanel::before { content: "Corrige la existencia después de un conteo físico e indica el motivo."; }
+#expensePanel::before { content: "Registra pagos operativos que no pasan por la bodega."; }
+#salePanel::before { content: "Registra el valor de la venta y retira el animal del inventario activo."; }
 
 .panel.active {
   display: block;
@@ -327,6 +426,13 @@ select {
   padding: 0 0.75rem;
 }
 
+input:disabled,
+select:disabled,
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 .primary {
   border-color: var(--accent);
   background: var(--accent);
@@ -336,11 +442,21 @@ select {
 .danger {
   border-color: var(--danger);
   background: var(--danger);
-  color: #450a0a;
+  color: #fff;
+}
+
+.saleButton {
+  border-color: #743f3b;
+  background: #743f3b;
+  color: #fff;
 }
 
 .hidden {
   display: none;
+}
+
+.capabilityHidden {
+  display: none !important;
 }
 
 .queuePanel {
@@ -365,6 +481,28 @@ select {
   font-size: 0.85rem;
 }
 
+#queueList small {
+  overflow-wrap: anywhere;
+  color: var(--danger);
+}
+
+.queueActions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.queueActions button {
+  min-height: 2.25rem;
+  padding: 0 0.65rem;
+  font-size: 0.8rem;
+}
+
+.queueActions .queueDiscard {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
 @media (min-width: 760px) {
   .shell {
     max-width: 720px;
@@ -372,7 +510,14 @@ select {
   }
 
   .quickActions {
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .farmContext {
+    grid-template-columns: auto minmax(0, 1fr) minmax(12rem, 16rem);
+  }
+
+  .farmSwitcher {
+    grid-column: auto;
   }
 }
-

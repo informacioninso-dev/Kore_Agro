@@ -8,10 +8,30 @@ from django.test import Client as HttpClient
 from django.utils import timezone
 from django_tenants.utils import get_public_schema_name, schema_context, tenant_context
 
+from apps.configuration.models import (
+    CapabilityDefinition,
+    OrganizationCapability,
+    OrganizationProfile,
+    ProfileDefinition,
+)
 from apps.herd.models import Animal, Farm, HerdGroup
 from apps.identity.access import ROLE_MANAGER, ensure_role_groups
 from apps.inventory.models import Input, StockLot
 from apps.tenants.models import Client, Domain
+
+TEST_TENANT_CAPABILITIES = {
+    "herd": ("Hato", CapabilityDefinition.Category.PRODUCTION),
+    "milk": ("Produccion de leche", CapabilityDefinition.Category.PRODUCTION),
+    "reproduction": ("Reproduccion", CapabilityDefinition.Category.PRODUCTION),
+    "health": ("Sanidad", CapabilityDefinition.Category.PRODUCTION),
+    "growth": ("Pesajes y crecimiento", CapabilityDefinition.Category.ANALYTICS),
+    "grazing": ("Pastoreo y potreros", CapabilityDefinition.Category.PRODUCTION),
+    "workforce": ("Personal y tareas", CapabilityDefinition.Category.OPERATIONS),
+    "inventory": ("Inventario", CapabilityDefinition.Category.INVENTORY),
+    "finance": ("Finanzas", CapabilityDefinition.Category.FINANCE),
+    "documents": ("Documentos", CapabilityDefinition.Category.COMPLIANCE),
+    "field_offline": ("Campo offline", CapabilityDefinition.Category.OPERATIONS),
+}
 
 
 def create_tenant(prefix: str = "tenant") -> Client:
@@ -20,6 +40,29 @@ def create_tenant(prefix: str = "tenant") -> Client:
     with schema_context(get_public_schema_name()):
         tenant = Client.objects.create(schema_name=schema_name, name=f"Tenant {schema_name}")
         Domain.objects.create(domain=f"{schema_name}.localhost", tenant=tenant, is_primary=True)
+        profile, _ = ProfileDefinition.objects.get_or_create(
+            code="livestock",
+            defaults={"name": "Ganaderia"},
+        )
+        OrganizationProfile.objects.update_or_create(
+            organization=tenant,
+            profile=profile,
+            defaults={"is_active": True},
+        )
+        for index, (code, (name, category)) in enumerate(TEST_TENANT_CAPABILITIES.items()):
+            capability, _ = CapabilityDefinition.objects.get_or_create(
+                code=code,
+                defaults={"name": name, "category": category, "sort_order": index * 10},
+            )
+            capability.compatible_profiles.add(profile)
+            OrganizationCapability.objects.update_or_create(
+                organization=tenant,
+                capability=capability,
+                defaults={
+                    "status": OrganizationCapability.Status.ENABLED,
+                    "expires_on": None,
+                },
+            )
     return tenant
 
 

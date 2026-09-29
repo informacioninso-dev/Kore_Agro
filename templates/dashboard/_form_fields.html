@@ -4,7 +4,9 @@
   </div>
 {% endif %}
 
-{% for field in form %}
+{% for field in form.hidden_fields %}{{ field }}{% endfor %}
+
+{% for field in form.visible_fields %}
   <label class="{% if field.field.widget.input_type == 'checkbox' %}flex items-center gap-2 text-sm text-neutral-300{% else %}grid gap-1 text-xs uppercase text-neutral-500{% endif %}">
     {% if field.field.widget.input_type == 'checkbox' %}
       {{ field }} <span>{{ field.label }}</span>
@@ -17,4 +19,3 @@
     {% endif %}
   </label>
 {% endfor %}
-

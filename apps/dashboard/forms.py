@@ -3,6 +3,7 @@ from decimal import Decimal
 from django import forms
 
 from apps.finance.models import CostAllocation
+from apps.growth.models import WeightRecord
 from apps.herd.models import Animal, Farm, HerdGroup
 from apps.inventory.models import Input, StockLot
 
@@ -136,6 +137,43 @@ class AnimalForm(DarkModeModelForm):
             "dry_off_date": "Secado",
             "notes": "Notas",
             "is_active": "Activo",
+        }
+
+
+class WeightRecordForm(DarkModeModelForm):
+    def __init__(self, *args, farm=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["animal"].queryset = _active_animals().select_related("farm")
+        if farm:
+            self.fields["animal"].queryset = self.fields["animal"].queryset.filter(farm=farm)
+            self.fields["farm"].initial = farm
+
+    class Meta:
+        model = WeightRecord
+        fields = [
+            "farm",
+            "animal",
+            "weighed_on",
+            "weight_kg",
+            "body_condition_score",
+            "scale_identifier",
+            "notes",
+        ]
+        widgets = {
+            "farm": forms.HiddenInput(),
+            "weighed_on": forms.DateInput(attrs={"type": "date"}),
+            "weight_kg": forms.NumberInput(attrs={"step": "0.01", "min": "0.01"}),
+            "body_condition_score": forms.NumberInput(
+                attrs={"step": "0.1", "min": "1", "max": "5"}
+            ),
+        }
+        labels = {
+            "animal": "Animal",
+            "weighed_on": "Fecha del pesaje",
+            "weight_kg": "Peso (kg)",
+            "body_condition_score": "Condicion corporal (1-5)",
+            "scale_identifier": "Bascula o equipo",
+            "notes": "Notas",
         }
 
 

@@ -1,0 +1,22 @@
+{% extends "platform/base.html" %}
+
+{% block title %}{{ form_title }} | KORE Agro{% endblock %}
+
+{% block content %}
+  <header class="platform-page-heading with-action">
+    <div><p class="platform-eyebrow">Catalogo de plataforma</p><h1>{{ form_title }}</h1><p>Las claves estables no se pueden modificar despues de crear el registro.</p></div>
+    <a class="platform-button secondary" href="{% url 'platform:catalog' %}">Volver</a>
+  </header>
+  <form method="post" class="platform-catalog-form">
+    {% csrf_token %}
+    {% if form.non_field_errors %}<div class="platform-form-error">{{ form.non_field_errors }}</div>{% endif %}
+    {% for field in form %}
+      {% if field.field.widget.input_type == 'checkbox' and field.field.widget.allow_multiple_selected %}
+        <div class="platform-choice-block"><span>{{ field.label }}</span>{{ field }}{% for error in field.errors %}<em>{{ error }}</em>{% endfor %}</div>
+      {% else %}
+        {% include "platform/_field.html" with field=field %}
+      {% endif %}
+    {% endfor %}
+    <div class="platform-form-actions"><button class="platform-button primary" type="submit">Guardar</button><a class="platform-button tertiary" href="{% url 'platform:catalog' %}">Cancelar</a></div>
+  </form>
+{% endblock %}

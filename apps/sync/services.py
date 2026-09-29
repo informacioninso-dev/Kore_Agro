@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from functools import partial
 from typing import Any
 from uuid import UUID
@@ -11,6 +11,9 @@ from django.utils import timezone
 from django.utils.dateparse import parse_date
 
 from apps.finance.services import record_animal_sale, record_operating_expense
+from apps.grazing.models import GrazingPeriod, Paddock
+from apps.grazing.services import finish_grazing_period, start_grazing_period
+from apps.growth.services import record_weight
 from apps.health.services import record_treatment
 from apps.herd.models import Animal, Farm, HerdGroup
 from apps.inventory.models import Input
@@ -24,6 +27,8 @@ from apps.milk.models import MilkingSession
 from apps.milk.services import MilkRecord, register_milking
 from apps.reproduction.models import ReproductionEvent
 from apps.reproduction.services import record_reproduction_event
+from apps.workforce.models import Worker, WorkTask
+from apps.workforce.services import complete_task, start_task
 
 from .models import IncomingEvent
 
@@ -38,6 +43,30 @@ INVENTORY_INPUT_RECEIVED = "inventory.input_received"
 INVENTORY_STOCK_ADJUSTED = "inventory.stock_adjusted"
 FINANCE_EXPENSE_RECORDED = "finance.expense_recorded"
 HERD_ANIMAL_SOLD = "herd.animal_sold"
+GROWTH_WEIGHT_RECORDED = "growth.weight_recorded"
+GRAZING_ROTATION_STARTED = "grazing.rotation_started"
+GRAZING_ROTATION_FINISHED = "grazing.rotation_finished"
+WORKFORCE_TASK_STARTED = "workforce.task_started"
+WORKFORCE_TASK_COMPLETED = "workforce.task_completed"
+SUPPORTED_SCHEMA_VERSIONS = frozenset({1})
+EVENT_CAPABILITIES = {
+    MILK_MILKING_RECORDED: "milk",
+    REPRODUCTION_HEAT_RECORDED: "reproduction",
+    REPRODUCTION_SERVICE_RECORDED: "reproduction",
+    REPRODUCTION_CALVING_RECORDED: "reproduction",
+    REPRODUCTION_DRY_OFF_RECORDED: "reproduction",
+    HEALTH_TREATMENT_RECORDED: "health",
+    INVENTORY_INPUT_CONSUMED: "inventory",
+    INVENTORY_INPUT_RECEIVED: "inventory",
+    INVENTORY_STOCK_ADJUSTED: "inventory",
+    FINANCE_EXPENSE_RECORDED: "finance",
+    HERD_ANIMAL_SOLD: "finance",
+    GROWTH_WEIGHT_RECORDED: "growth",
+    GRAZING_ROTATION_STARTED: "grazing",
+    GRAZING_ROTATION_FINISHED: "grazing",
+    WORKFORCE_TASK_STARTED: "workforce",
+    WORKFORCE_TASK_COMPLETED: "workforce",
+}
 
 
 @dataclass(frozen=True)
@@ -62,7 +91,13 @@ class ActionEventResult:
     resolution: str = ""
 
 
-def process_action_queue(events: list[ActionEventMessage]) -> list[ActionEventResult]:
+def process_action_queue(
+    events: list[ActionEventMessage],
+    *,
+    allowed_farm_ids: set[UUID] | None = None,
+    allowed_capabilities: set[str] | None = None,
+    allowed_worker_ids: set[UUID] | None = None,
+) -> list[ActionEventResult]:
     ordered_events = sorted(events, key=lambda item: item.client_sequence)
     results = []
     blocked_by = None
@@ -78,113 +113,267 @@ def process_action_queue(events: list[ActionEventMessage]) -> list[ActionEventRe
                 )
             )
             continue
-        result = process_action_event(event)
+        result = process_action_event(
+            event,
+            allowed_farm_ids=allowed_farm_ids,
+            allowed_capabilities=allowed_capabilities,
+            allowed_worker_ids=allowed_worker_ids,
+        )
         results.append(result)
         if result.status in {"failed", "conflict"}:
             blocked_by = event.event_id
     return results
 
 
-def process_action_event(message: ActionEventMessage) -> ActionEventResult:
-    incoming, created = IncomingEvent.objects.get_or_create(
-        event_id=message.event_id,
-        defaults={
-            "tenant_id": message.tenant_id,
-            "device_id": message.device_id,
-            "actor_id": message.actor_id,
-            "client_sequence": message.client_sequence,
-            "schema_version": message.schema_version,
-            "event_type": message.event_type,
-            "occurred_at": message.occurred_at,
-            "payload": message.payload,
-            "status": IncomingEvent.Status.RECEIVED,
-        },
-    )
-    if not created and _event_contents_differ(incoming, message):
+def process_action_event(
+    message: ActionEventMessage,
+    *,
+    allowed_farm_ids: set[UUID] | None = None,
+    allowed_capabilities: set[str] | None = None,
+    allowed_worker_ids: set[UUID] | None = None,
+) -> ActionEventResult:
+    try:
+        _validate_message_envelope(message)
+        _validate_event_capability(message, allowed_capabilities)
+        _validate_farm_access(message, allowed_farm_ids)
+        _validate_workforce_access(message, allowed_worker_ids)
+    except (ValidationError, ValueError, TypeError) as exc:
         return ActionEventResult(
             event_id=message.event_id,
-            status="conflict",
-            detail="The event_id was already used with different data.",
-            resolution="Create a new event instead of reusing this event_id.",
-        )
-    if not created and incoming.status == IncomingEvent.Status.PROCESSED:
-        return ActionEventResult(
-            event_id=message.event_id,
-            status="acked",
-            detail="already_processed",
-        )
-    if not created and incoming.status == IncomingEvent.Status.CONFLICT:
-        return ActionEventResult(
-            event_id=message.event_id,
-            status="conflict",
-            detail=incoming.error_message,
-            resolution="Create a corrected event with a new event_id.",
+            status="failed",
+            detail=str(exc),
+            resolution="Create a corrected event before retrying the queue.",
         )
 
-    sequence_event = (
-        IncomingEvent.objects.filter(
-            device_id=message.device_id,
-            client_sequence=message.client_sequence,
-        )
-        .exclude(event_id=message.event_id)
-        .first()
-    )
-    if sequence_event:
-        detail = f"Sequence {message.client_sequence} is already assigned to another event."
-        incoming.mark_conflict(code="sequence_conflict", message=detail)
-        return ActionEventResult(
-            event_id=message.event_id,
-            status="conflict",
-            detail=detail,
-            resolution="Create a new event with the next device sequence.",
+    with transaction.atomic():
+        incoming = _lock_or_register_event(message)
+        if not _matches_stored_event(incoming, message):
+            return ActionEventResult(
+                event_id=message.event_id,
+                status="conflict",
+                detail="The event_id was already used with different data.",
+                resolution="Create a new event instead of reusing this event_id.",
+            )
+        if incoming.status == IncomingEvent.Status.CONFLICT:
+            return ActionEventResult(
+                event_id=message.event_id,
+                status="conflict",
+                detail=incoming.error_message or "client_sequence_already_used",
+                resolution="Create a new event with the next device sequence.",
+            )
+        if incoming.status == IncomingEvent.Status.PROCESSED:
+            return ActionEventResult(
+                event_id=message.event_id,
+                status="acked",
+                detail="already_processed",
+            )
+
+        incoming.mark_processing()
+        try:
+            with transaction.atomic():
+                _validate_event(incoming)
+                _dispatch(incoming)
+        except InsufficientStockError as exc:
+            return _process_expected_failure(incoming, exc)
+        except (ObjectDoesNotExist, ValidationError, ValueError, KeyError) as exc:
+            return _process_expected_failure(incoming, exc)
+        except IntegrityError as exc:
+            return _process_integrity_conflict(incoming, exc)
+        incoming.mark_processed()
+        return ActionEventResult(event_id=message.event_id, status="acked")
+
+
+def _validate_farm_access(
+    message: ActionEventMessage,
+    allowed_farm_ids: set[UUID] | None,
+) -> None:
+    if allowed_farm_ids is None:
+        return
+    raw_farm_id = message.payload.get("farm_id")
+    try:
+        farm_id = UUID(str(raw_farm_id))
+    except (TypeError, ValueError) as exc:
+        raise ValidationError("farm_id is required and must be a UUID.") from exc
+    if farm_id not in allowed_farm_ids:
+        raise ValidationError("No tienes acceso a la hacienda indicada.")
+
+
+def _validate_event_capability(
+    message: ActionEventMessage,
+    allowed_capabilities: set[str] | None,
+) -> None:
+    if allowed_capabilities is None:
+        return
+    required = EVENT_CAPABILITIES.get(message.event_type)
+    if required and required not in allowed_capabilities:
+        raise ValidationError(
+            f"La capacidad '{required}' no esta habilitada para esta organizacion."
         )
 
-    incoming.mark_processing()
+
+def _validate_workforce_access(
+    message: ActionEventMessage,
+    allowed_worker_ids: set[UUID] | None,
+) -> None:
+    if allowed_worker_ids is None or message.event_type not in {
+        WORKFORCE_TASK_STARTED,
+        WORKFORCE_TASK_COMPLETED,
+    }:
+        return
+    task_id = message.payload.get("task_id")
+    if not task_id:
+        raise ValidationError("task_id is required.")
+    task = WorkTask.objects.only("assigned_to_id").get(pk=task_id)
+    if task.assigned_to_id and task.assigned_to_id not in allowed_worker_ids:
+        raise ValidationError("No tienes acceso a la tarea indicada.")
+    worker_id = message.payload.get("worker_id")
+    if worker_id:
+        try:
+            parsed_worker_id = UUID(str(worker_id))
+        except (TypeError, ValueError) as exc:
+            raise ValidationError("worker_id must be a UUID.") from exc
+        if parsed_worker_id not in allowed_worker_ids:
+            raise ValidationError("No puedes registrar trabajo a nombre de otra persona.")
+
+
+def _process_expected_failure(incoming: IncomingEvent, exc: Exception) -> ActionEventResult:
+    code = (
+        "insufficient_stock" if isinstance(exc, InsufficientStockError) else exc.__class__.__name__
+    )
+    incoming.mark_failed(code=code, message=str(exc))
+    resolution = (
+        "Receive or adjust stock, then retry this event."
+        if isinstance(exc, InsufficientStockError)
+        else "Correct the missing or invalid data, then retry this event."
+    )
+    return ActionEventResult(
+        event_id=incoming.event_id,
+        status="failed",
+        detail=str(exc),
+        retryable=True,
+        resolution=resolution,
+    )
+
+
+def _process_integrity_conflict(
+    incoming: IncomingEvent,
+    exc: IntegrityError,
+) -> ActionEventResult:
+    detail = "This event conflicts with data already registered."
+    incoming.mark_failed(code="integrity_conflict", message=str(exc))
+    return ActionEventResult(
+        event_id=incoming.event_id,
+        status="conflict",
+        detail=detail,
+        resolution="Review the existing record and create a corrected event if needed.",
+    )
+
+
+def _lock_or_register_event(message: ActionEventMessage) -> IncomingEvent:
+    incoming = IncomingEvent.objects.select_for_update().filter(event_id=message.event_id).first()
+    if incoming:
+        return incoming
+
+    sequence_owner = _sequence_owner(message)
+    if sequence_owner:
+        return _create_sequence_conflict(message, sequence_owner)
+
     try:
         with transaction.atomic():
-            _dispatch(incoming)
-    except InsufficientStockError as exc:
-        incoming.mark_failed(code="insufficient_stock", message=str(exc))
-        return ActionEventResult(
-            event_id=message.event_id,
-            status="failed",
-            detail=str(exc),
-            retryable=True,
-            resolution="Receive or adjust stock, then retry this event.",
-        )
-    except (ObjectDoesNotExist, ValidationError, ValueError, KeyError) as exc:
-        incoming.mark_failed(code=exc.__class__.__name__, message=str(exc))
-        return ActionEventResult(
-            event_id=message.event_id,
-            status="failed",
-            detail=str(exc),
-            retryable=True,
-            resolution="Correct the missing or invalid data, then retry this event.",
-        )
+            return IncomingEvent.objects.create(
+                event_id=message.event_id,
+                **_message_defaults(message),
+            )
     except IntegrityError:
-        detail = "This event conflicts with data already registered."
-        incoming.mark_conflict(code="integrity_conflict", message=detail)
-        return ActionEventResult(
-            event_id=message.event_id,
-            status="conflict",
-            detail=detail,
-            resolution="Review the existing record and create a corrected event if needed.",
+        incoming = (
+            IncomingEvent.objects.select_for_update().filter(event_id=message.event_id).first()
         )
+        if incoming:
+            return incoming
+        sequence_owner = _sequence_owner(message)
+        if sequence_owner:
+            return _create_sequence_conflict(message, sequence_owner)
+        raise
 
-    incoming.mark_processed()
-    return ActionEventResult(event_id=message.event_id, status="acked")
+
+def _sequence_owner(message: ActionEventMessage) -> IncomingEvent | None:
+    return (
+        IncomingEvent.objects.select_for_update()
+        .exclude(status=IncomingEvent.Status.CONFLICT)
+        .filter(device_id=message.device_id, client_sequence=message.client_sequence)
+        .first()
+    )
 
 
-def _event_contents_differ(incoming: IncomingEvent, message: ActionEventMessage) -> bool:
-    return any(
+def _create_sequence_conflict(
+    message: ActionEventMessage,
+    sequence_owner: IncomingEvent,
+) -> IncomingEvent:
+    detail = f"client_sequence_already_used_by:{sequence_owner.event_id}"
+    defaults = _message_defaults(message)
+    defaults.update(
+        status=IncomingEvent.Status.CONFLICT,
+        error_code="client_sequence_reused",
+        error_message=detail,
+    )
+    try:
+        with transaction.atomic():
+            return IncomingEvent.objects.create(event_id=message.event_id, **defaults)
+    except IntegrityError:
+        return IncomingEvent.objects.select_for_update().get(event_id=message.event_id)
+
+
+def _message_defaults(message: ActionEventMessage) -> dict[str, Any]:
+    return {
+        "tenant_id": message.tenant_id,
+        "device_id": message.device_id,
+        "actor_id": message.actor_id,
+        "client_sequence": message.client_sequence,
+        "schema_version": message.schema_version,
+        "event_type": message.event_type,
+        "occurred_at": message.occurred_at,
+        "payload": message.payload,
+        "status": IncomingEvent.Status.RECEIVED,
+    }
+
+
+def _matches_stored_event(incoming: IncomingEvent, message: ActionEventMessage) -> bool:
+    return all(
         (
-            incoming.device_id != message.device_id,
-            incoming.client_sequence != message.client_sequence,
-            incoming.event_type != message.event_type,
-            incoming.occurred_at != message.occurred_at,
-            incoming.payload != message.payload,
+            incoming.tenant_id == message.tenant_id,
+            incoming.device_id == message.device_id,
+            incoming.actor_id == message.actor_id,
+            incoming.client_sequence == message.client_sequence,
+            incoming.schema_version == message.schema_version,
+            incoming.event_type == message.event_type,
+            incoming.occurred_at == message.occurred_at,
+            incoming.payload == message.payload,
         )
     )
+
+
+def _validate_message_envelope(message: ActionEventMessage) -> None:
+    if not isinstance(message.client_sequence, int) or isinstance(message.client_sequence, bool):
+        raise ValidationError("client_sequence must be an integer.")
+    if message.client_sequence <= 0:
+        raise ValidationError("client_sequence must be positive.")
+    if not isinstance(message.schema_version, int) or isinstance(message.schema_version, bool):
+        raise ValidationError("schema_version must be an integer.")
+    if not isinstance(message.event_type, str) or not message.event_type.strip():
+        raise ValidationError("event_type is required.")
+    if len(message.event_type) > 100:
+        raise ValidationError("event_type cannot exceed 100 characters.")
+    if not isinstance(message.payload, dict):
+        raise ValidationError("payload must be an object.")
+    if not isinstance(message.occurred_at, datetime) or timezone.is_naive(message.occurred_at):
+        raise ValidationError("occurred_at must include a timezone.")
+
+
+def _validate_event(event: IncomingEvent) -> None:
+    if event.schema_version not in SUPPORTED_SCHEMA_VERSIONS:
+        raise ValidationError(f"Unsupported schema_version: {event.schema_version}.")
+    if event.event_type not in _HANDLERS:
+        raise ValidationError(f"Unsupported event type: {event.event_type}")
 
 
 def _dispatch(event: IncomingEvent) -> None:
@@ -197,21 +386,30 @@ def _dispatch(event: IncomingEvent) -> None:
 def _handle_milking(event: IncomingEvent) -> MilkingSession:
     payload = event.payload
     farm = _get_farm(payload)
-    milking_date = _payload_date(payload.get("milking_date")) or timezone.localtime(
-        event.occurred_at
-    ).date()
+    milking_date = (
+        _payload_date(payload.get("milking_date")) or timezone.localtime(event.occurred_at).date()
+    )
     shift = payload.get("shift") or MilkingSession.Shift.TOTAL_DAY
-    unit_price = _decimal_or_none(payload.get("unit_price"))
+    if shift not in MilkingSession.Shift.values:
+        raise ValidationError(f"Invalid milking shift: {shift}.")
+    unit_price = _payload_decimal(payload, "unit_price", required=False, minimum=Decimal("0"))
     records = []
+    payload_records = payload.get("records")
+    if not isinstance(payload_records, list) or not payload_records:
+        raise ValidationError("records must contain at least one milk record.")
 
-    for record in payload.get("records", []):
+    for record in payload_records:
+        if not isinstance(record, dict):
+            raise ValidationError("Each milk record must be an object.")
         animal = _get_animal(record, farm=farm, required=False)
         group = _get_group(record, farm=farm, required=False)
+        if not animal and not group:
+            raise ValidationError("Milk record requires animal_id/tag or group_id/name.")
         records.append(
             MilkRecord(
                 animal=animal,
                 group=group,
-                liters=Decimal(str(record["liters"])),
+                liters=_payload_decimal(record, "liters", minimum=Decimal("0"), exclusive=True),
             )
         )
 
@@ -230,9 +428,15 @@ def _handle_reproduction(event: IncomingEvent, event_type: str) -> ReproductionE
     payload = event.payload
     farm = _get_farm(payload)
     animal = _get_animal(payload, farm=farm)
-    occurred_on = _payload_date(payload.get("occurred_on")) or timezone.localtime(
-        event.occurred_at
-    ).date()
+    occurred_on = (
+        _payload_date(payload.get("occurred_on")) or timezone.localtime(event.occurred_at).date()
+    )
+    service_type = payload.get("service_type")
+    if service_type and service_type not in ReproductionEvent.ServiceType.values:
+        raise ValidationError(f"Invalid service_type: {service_type}.")
+    calf_sex = payload.get("calf_sex")
+    if calf_sex and calf_sex not in Animal.Sex.values:
+        raise ValidationError(f"Invalid calf_sex: {calf_sex}.")
 
     return record_reproduction_event(
         farm=farm,
@@ -249,17 +453,29 @@ def _handle_treatment(event: IncomingEvent):
     farm = _get_farm(payload)
     animal = _get_animal(payload, farm=farm)
     input_ = _get_input(payload, required=False)
-    quantity = _decimal_or_none(payload.get("quantity"))
+    diagnosis = payload.get("diagnosis")
+    if not isinstance(diagnosis, str) or not diagnosis.strip():
+        raise ValidationError("diagnosis is required.")
+    quantity = _payload_decimal(
+        payload,
+        "quantity",
+        required=False,
+        minimum=Decimal("0"),
+        exclusive=True,
+    )
+    withdrawal_hours = _payload_nonnegative_int(payload, "milk_withdrawal_hours")
+    if quantity is not None and input_ is None:
+        raise ValidationError("input_id, sku or input_name is required when quantity is provided.")
 
     return record_treatment(
         farm=farm,
         animal=animal,
-        diagnosis=payload["diagnosis"],
+        diagnosis=diagnosis.strip(),
         started_at=event.occurred_at,
         input_=input_,
         quantity=quantity,
         dosage=payload.get("dosage", ""),
-        milk_withdrawal_hours=payload.get("milk_withdrawal_hours"),
+        milk_withdrawal_hours=withdrawal_hours,
         source_event_id=event.event_id,
         notes=payload.get("notes", ""),
     )
@@ -271,7 +487,7 @@ def _handle_input_consumed(event: IncomingEvent):
     animal = _get_animal(payload, farm=farm, required=False)
     group = _get_group(payload, farm=farm, required=False)
     input_ = _get_input(payload)
-    quantity = Decimal(str(payload["quantity"]))
+    quantity = _payload_decimal(payload, "quantity", minimum=Decimal("0"), exclusive=True)
 
     return consume_input(
         farm=farm,
@@ -293,8 +509,8 @@ def _handle_input_received(event: IncomingEvent):
     return receive_input(
         farm=farm,
         input_=input_,
-        quantity=Decimal(str(payload["quantity"])),
-        unit_cost=_decimal_or_none(payload.get("unit_cost")),
+        quantity=_payload_decimal(payload, "quantity", minimum=Decimal("0"), exclusive=True),
+        unit_cost=_payload_decimal(payload, "unit_cost", required=False, minimum=Decimal("0")),
         occurred_at=event.occurred_at,
         lot_code=payload.get("lot_code", ""),
         expires_on=_payload_date(payload.get("expires_on")),
@@ -313,7 +529,7 @@ def _handle_stock_adjusted(event: IncomingEvent):
     return adjust_stock(
         farm=farm,
         input_=input_,
-        quantity_delta=Decimal(str(payload["quantity_delta"])),
+        quantity_delta=_payload_decimal(payload, "quantity_delta", nonzero=True),
         occurred_at=event.occurred_at,
         reason=payload.get("reason", ""),
         animal=animal,
@@ -330,7 +546,7 @@ def _handle_expense_recorded(event: IncomingEvent):
 
     return record_operating_expense(
         farm=farm,
-        amount=Decimal(str(payload["amount"])),
+        amount=_payload_decimal(payload, "amount", minimum=Decimal("0"), exclusive=True),
         cost_type=payload.get("cost_type", "other"),
         cost_date=_payload_date(payload.get("cost_date"))
         or timezone.localtime(event.occurred_at).date(),
@@ -349,11 +565,125 @@ def _handle_animal_sold(event: IncomingEvent):
     return record_animal_sale(
         farm=farm,
         animal=animal,
-        amount=Decimal(str(payload["amount"])),
+        amount=_payload_decimal(payload, "amount", minimum=Decimal("0"), exclusive=True),
         sale_date=_payload_date(payload.get("sale_date"))
         or timezone.localtime(event.occurred_at).date(),
         source_event_id=event.event_id,
         notes=payload.get("notes", ""),
+    )
+
+
+def _handle_weight_recorded(event: IncomingEvent):
+    payload = event.payload
+    farm = _get_farm(payload)
+    animal = _get_animal(payload, farm=farm)
+    body_condition_score = _payload_decimal(
+        payload,
+        "body_condition_score",
+        required=False,
+        minimum=Decimal("1"),
+    )
+    if body_condition_score is not None and body_condition_score > Decimal("5"):
+        raise ValidationError("body_condition_score must be at most 5.")
+
+    return record_weight(
+        farm=farm,
+        animal=animal,
+        weight_kg=_payload_decimal(
+            payload,
+            "weight_kg",
+            minimum=Decimal("0"),
+            exclusive=True,
+        ),
+        weighed_on=_payload_date(payload.get("weighed_on"))
+        or timezone.localtime(event.occurred_at).date(),
+        body_condition_score=body_condition_score,
+        scale_identifier=payload.get("scale_identifier", ""),
+        source_event_id=event.event_id,
+        notes=payload.get("notes", ""),
+    )
+
+
+def _handle_grazing_started(event: IncomingEvent):
+    payload = event.payload
+    farm = _get_farm(payload)
+    paddock = Paddock.objects.get(id=payload.get("paddock_id"), farm=farm, is_active=True)
+    group = _get_group(payload, farm=farm)
+
+    return start_grazing_period(
+        farm=farm,
+        paddock=paddock,
+        group=group,
+        started_on=_payload_date(payload.get("started_on"))
+        or timezone.localtime(event.occurred_at).date(),
+        planned_end_on=_payload_date(payload.get("planned_end_on")),
+        head_count=_payload_nonnegative_int(payload, "head_count"),
+        entry_biomass_kg_ha=_payload_decimal(
+            payload,
+            "entry_biomass_kg_ha",
+            required=False,
+            minimum=Decimal("0"),
+            exclusive=True,
+        ),
+        source_event_id=event.event_id,
+        notes=payload.get("notes", ""),
+    )
+
+
+def _handle_grazing_finished(event: IncomingEvent):
+    payload = event.payload
+    farm = _get_farm(payload)
+    period_id = payload.get("grazing_period_id")
+    if not period_id:
+        raise ValidationError("grazing_period_id is required.")
+    period = GrazingPeriod.objects.get(id=period_id, farm=farm)
+
+    return finish_grazing_period(
+        period,
+        ended_on=_payload_date(payload.get("ended_on"))
+        or timezone.localtime(event.occurred_at).date(),
+        exit_biomass_kg_ha=_payload_decimal(
+            payload,
+            "exit_biomass_kg_ha",
+            required=False,
+            minimum=Decimal("0"),
+            exclusive=True,
+        ),
+        notes=payload.get("notes", ""),
+    )
+
+
+def _workforce_task_and_worker(payload: dict[str, Any]) -> tuple[WorkTask, Worker | None]:
+    farm = _get_farm(payload)
+    task_id = payload.get("task_id")
+    if not task_id:
+        raise ValidationError("task_id is required.")
+    task = WorkTask.objects.get(id=task_id, farm=farm)
+    worker = None
+    if worker_id := payload.get("worker_id"):
+        worker = Worker.objects.get(id=worker_id, farm=farm, is_active=True)
+    return task, worker
+
+
+def _handle_task_started(event: IncomingEvent):
+    task, worker = _workforce_task_and_worker(event.payload)
+    return start_task(task, worker=worker, started_at=event.occurred_at)
+
+
+def _handle_task_completed(event: IncomingEvent):
+    task, worker = _workforce_task_and_worker(event.payload)
+    return complete_task(
+        task,
+        worker=worker,
+        hours=_payload_decimal(
+            event.payload,
+            "hours",
+            minimum=Decimal("0"),
+            exclusive=True,
+        ),
+        completed_at=event.occurred_at,
+        source_event_id=event.event_id,
+        notes=event.payload.get("notes", ""),
     )
 
 
@@ -381,6 +711,11 @@ _HANDLERS = {
     INVENTORY_STOCK_ADJUSTED: _handle_stock_adjusted,
     FINANCE_EXPENSE_RECORDED: _handle_expense_recorded,
     HERD_ANIMAL_SOLD: _handle_animal_sold,
+    GROWTH_WEIGHT_RECORDED: _handle_weight_recorded,
+    GRAZING_ROTATION_STARTED: _handle_grazing_started,
+    GRAZING_ROTATION_FINISHED: _handle_grazing_finished,
+    WORKFORCE_TASK_STARTED: _handle_task_started,
+    WORKFORCE_TASK_COMPLETED: _handle_task_completed,
 }
 
 SUPPORTED_EVENT_TYPES = tuple(_HANDLERS)
@@ -389,10 +724,7 @@ SUPPORTED_EVENT_TYPES = tuple(_HANDLERS)
 def _get_farm(payload: dict[str, Any]) -> Farm:
     if farm_id := payload.get("farm_id"):
         return Farm.objects.get(id=farm_id)
-    farm = Farm.objects.filter(is_active=True).order_by("created_at").first()
-    if not farm:
-        raise ObjectDoesNotExist("No active farm found for tenant.")
-    return farm
+    raise ValidationError("farm_id is required.")
 
 
 def _get_animal(payload: dict[str, Any], *, farm: Farm, required: bool = True) -> Animal | None:
@@ -432,10 +764,57 @@ def _payload_date(value):
         return None
     if hasattr(value, "date") and not isinstance(value, str):
         return value.date()
-    return parse_date(str(value))
+    try:
+        parsed = parse_date(str(value))
+    except ValueError as exc:
+        raise ValidationError(f"Invalid date: {value}.") from exc
+    if parsed is None:
+        raise ValidationError(f"Invalid date: {value}.")
+    return parsed
 
 
-def _decimal_or_none(value) -> Decimal | None:
+def _payload_decimal(
+    payload: dict[str, Any],
+    field: str,
+    *,
+    required: bool = True,
+    minimum: Decimal | None = None,
+    exclusive: bool = False,
+    nonzero: bool = False,
+) -> Decimal | None:
+    value = payload.get(field)
+    if value is None or value == "":
+        if required:
+            raise ValidationError(f"{field} is required.")
+        return None
+    try:
+        number = Decimal(str(value))
+    except (InvalidOperation, TypeError, ValueError) as exc:
+        raise ValidationError(f"{field} must be a decimal number.") from exc
+    if not number.is_finite():
+        raise ValidationError(f"{field} must be a finite decimal number.")
+    if minimum is not None:
+        invalid = number <= minimum if exclusive else number < minimum
+        if invalid:
+            comparator = "greater than" if exclusive else "at least"
+            raise ValidationError(f"{field} must be {comparator} {minimum}.")
+    if nonzero and number == 0:
+        raise ValidationError(f"{field} cannot be zero.")
+    return number
+
+
+def _payload_nonnegative_int(payload: dict[str, Any], field: str) -> int | None:
+    value = payload.get(field)
     if value is None or value == "":
         return None
-    return Decimal(str(value))
+    try:
+        number = int(value)
+    except (TypeError, ValueError) as exc:
+        raise ValidationError(f"{field} must be a non-negative integer.") from exc
+    if isinstance(value, float) and not value.is_integer():
+        raise ValidationError(f"{field} must be a non-negative integer.")
+    if isinstance(value, str) and str(number) != value.strip():
+        raise ValidationError(f"{field} must be a non-negative integer.")
+    if number < 0:
+        raise ValidationError(f"{field} must be a non-negative integer.")
+    return number

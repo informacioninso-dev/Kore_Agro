@@ -11,7 +11,7 @@
     </div>
   {% endif %}
 
-  <section class="grid gap-4 xl:grid-cols-2">
+  {% if 'herd' in kore_capabilities or 'inventory' in kore_capabilities %}<section class="grid gap-4 xl:grid-cols-2">
     <article class="rounded border border-neutral-800 bg-neutral-900">
       <header class="border-b border-neutral-800 px-4 py-3">
         <h2 class="font-semibold">Haciendas</h2>
@@ -70,7 +70,7 @@
       </div>
     </article>
 
-    <article class="rounded border border-neutral-800 bg-neutral-900">
+    {% if 'herd' in kore_capabilities %}<article class="rounded border border-neutral-800 bg-neutral-900">
       <header class="border-b border-neutral-800 px-4 py-3">
         <h2 class="font-semibold">Lotes</h2>
       </header>
@@ -124,10 +124,10 @@
           </table>
         </div>
       </div>
-    </article>
-  </section>
+    </article>{% endif %}
+  </section>{% endif %}
 
-  <section class="rounded border border-neutral-800 bg-neutral-900">
+  {% if 'herd' in kore_capabilities %}<section class="rounded border border-neutral-800 bg-neutral-900">
     <header class="border-b border-neutral-800 px-4 py-3">
       <h2 class="font-semibold">Hato</h2>
     </header>
@@ -173,6 +173,7 @@
                 <td>{{ animal.last_service_date|date:"Y-m-d"|default:"-" }}</td>
                 <td>{{ animal.expected_calving_date|date:"Y-m-d"|default:"-" }}</td>
                 <td class="flex justify-end gap-2 py-2">
+                  <a class="rounded border border-emerald-700 px-2 py-1 text-xs font-semibold text-emerald-700" href="{% url 'dashboard:animal_timeline' animal.id %}">Historial</a>
                   <button class="rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-300" type="button" hx-get="{% url 'dashboard:animal_edit' animal.id %}" hx-target="#master-data-content" hx-swap="outerHTML">Editar</button>
                   <form hx-post="{% url 'dashboard:animal_deactivate' animal.id %}" hx-target="#master-data-content" hx-swap="outerHTML" hx-confirm="Desactivar animal?">
                     {% csrf_token %}
@@ -187,9 +188,9 @@
         </table>
       </div>
     </div>
-  </section>
+  </section>{% endif %}
 
-  <section class="grid gap-4 xl:grid-cols-2">
+  {% if 'inventory' in kore_capabilities %}<section class="grid gap-4 xl:grid-cols-2">
     <article class="rounded border border-neutral-800 bg-neutral-900">
       <header class="border-b border-neutral-800 px-4 py-3">
         <h2 class="font-semibold">Insumos</h2>
@@ -383,5 +384,5 @@
         </tbody>
       </table>
     </div>
-  </section>
+  </section>{% endif %}
 </div>

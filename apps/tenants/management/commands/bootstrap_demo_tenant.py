@@ -1,13 +1,22 @@
 from datetime import timedelta
 from decimal import Decimal
 
+from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 from django_tenants.utils import tenant_context
 
+from apps.configuration.models import (
+    CapabilityDefinition,
+    OrganizationCapability,
+    OrganizationProfile,
+    ProfileDefinition,
+)
+from apps.grazing.models import GrazingPeriod, Paddock
 from apps.herd.models import Animal, Farm, HerdGroup
 from apps.inventory.models import Input, StockLot
 from apps.tenants.models import Client, Domain
+from apps.workforce.models import Worker, WorkTask
 
 
 class Command(BaseCommand):
@@ -37,6 +46,36 @@ class Command(BaseCommand):
             domain=domain_name,
             defaults={"tenant": tenant, "is_primary": True},
         )
+        livestock = ProfileDefinition.objects.get(code="livestock")
+        OrganizationProfile.objects.update_or_create(
+            organization=tenant,
+            profile=livestock,
+            defaults={"is_active": True},
+        )
+        capability_status = (
+            OrganizationCapability.Status.TRIAL
+            if tenant.on_trial
+            else OrganizationCapability.Status.ENABLED
+        )
+        implemented_codes = [
+            "herd",
+            "milk",
+            "reproduction",
+            "health",
+            "growth",
+            "grazing",
+            "workforce",
+            "inventory",
+            "finance",
+            "documents",
+            "field_offline",
+        ]
+        for capability in CapabilityDefinition.objects.filter(code__in=implemented_codes):
+            OrganizationCapability.objects.update_or_create(
+                organization=tenant,
+                capability=capability,
+                defaults={"status": capability_status},
+            )
 
         with tenant_context(tenant):
             farm, _ = Farm.objects.get_or_create(
@@ -121,6 +160,66 @@ class Command(BaseCommand):
                         "unit_cost": cost,
                     },
                 )
+
+            north_paddock, _ = Paddock.objects.get_or_create(
+                farm=farm,
+                code="P-NORTE",
+                defaults={
+                    "name": "Potrero Norte",
+                    "area_hectares": Decimal("3.50"),
+                    "forage_type": "Ryegrass y trebol",
+                    "rest_target_days": 28,
+                    "capacity_animals": 35,
+                },
+            )
+            Paddock.objects.get_or_create(
+                farm=farm,
+                code="P-SUR",
+                defaults={
+                    "name": "Potrero Sur",
+                    "area_hectares": Decimal("2.80"),
+                    "forage_type": "Kikuyo",
+                    "rest_target_days": 24,
+                    "capacity_animals": 28,
+                },
+            )
+            admin_user = get_user_model().objects.filter(username="admin").first()
+            worker, _ = Worker.objects.update_or_create(
+                farm=farm,
+                code="ADM-01",
+                defaults={
+                    "full_name": "Administrador Demo",
+                    "position": Worker.Position.FOREMAN,
+                    "hourly_rate": Decimal("4.50"),
+                    "user": admin_user,
+                },
+            )
+            WorkTask.objects.get_or_create(
+                farm=farm,
+                title="Revisar bebederos del Potrero Sur",
+                scheduled_for=timezone.localdate(),
+                defaults={
+                    "category": WorkTask.Category.MAINTENANCE,
+                    "priority": WorkTask.Priority.HIGH,
+                    "assigned_to": worker,
+                    "paddock": Paddock.objects.get(farm=farm, code="P-SUR"),
+                    "estimated_hours": Decimal("1.50"),
+                    "instructions": "Verificar caudal, limpieza y posibles fugas.",
+                },
+            )
+            GrazingPeriod.objects.get_or_create(
+                group=lote,
+                ended_on__isnull=True,
+                defaults={
+                    "farm": farm,
+                    "paddock": north_paddock,
+                    "started_on": timezone.localdate() - timedelta(days=3),
+                    "planned_end_on": timezone.localdate() + timedelta(days=2),
+                    "head_count": 3,
+                    "entry_biomass_kg_ha": Decimal("2850"),
+                    "notes": "Rotacion demostrativa",
+                },
+            )
 
         self.stdout.write(
             self.style.SUCCESS(f"Tenant listo: schema={schema_name}, domain={domain_name}")

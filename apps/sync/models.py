@@ -33,6 +33,13 @@ class IncomingEvent(TimeStampedModel):
             models.Index(fields=["event_type", "occurred_at"]),
             models.Index(fields=["status"]),
         ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["device_id", "client_sequence"],
+                condition=~models.Q(status="conflict"),
+                name="unique_active_device_sequence",
+            ),
+        ]
 
     def mark_processing(self) -> None:
         self.status = self.Status.PROCESSING
@@ -59,4 +66,3 @@ class IncomingEvent(TimeStampedModel):
 
     def __str__(self) -> str:
         return f"{self.event_type} {self.event_id}"
-

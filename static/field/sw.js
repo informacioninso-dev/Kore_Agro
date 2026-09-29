@@ -1,4 +1,4 @@
-const CACHE_NAME = "kore-agro-field-v2";
+const CACHE_NAME = "kore-agro-field-v9";
 const APP_SHELL = [
   "/field/",
   "/field/manifest.webmanifest",
@@ -22,23 +22,38 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   const request = event.request;
-  if (request.method !== "GET") {
+  const url = new URL(request.url);
+  if (request.method !== "GET" || url.origin !== self.location.origin) return;
+  if (url.pathname.startsWith("/api/")) return;
+
+  if (request.mode === "navigate") {
+    event.respondWith(networkFirst(request));
     return;
   }
-
-  event.respondWith(
-    caches.match(request).then((cached) => {
-      if (cached) {
-        return cached;
-      }
-      return fetch(request)
-        .then((response) => {
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
-          return response;
-        })
-        .catch(() => caches.match("/field/"));
-    })
-  );
+  event.respondWith(staleWhileRevalidate(request));
 });
 
+async function networkFirst(request) {
+  try {
+    const response = await fetch(request);
+    if (response.ok && !response.redirected) {
+      const cache = await caches.open(CACHE_NAME);
+      await cache.put(request, response.clone());
+    }
+    return response;
+  } catch (error) {
+    return (await caches.match(request)) || caches.match("/field/");
+  }
+}
+
+async function staleWhileRevalidate(request) {
+  const cached = await caches.match(request);
+  const network = fetch(request).then(async (response) => {
+    if (response.ok) {
+      const cache = await caches.open(CACHE_NAME);
+      await cache.put(request, response.clone());
+    }
+    return response;
+  }).catch(() => cached || Response.error());
+  return cached || network;
+}

@@ -23,6 +23,7 @@ ALLOWED_HOSTS = env("ALLOWED_HOSTS")
 SHARED_APPS = [
     "django_tenants",
     "apps.tenants",
+    "apps.configuration",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -40,6 +41,9 @@ TENANT_APPS = [
     "django.contrib.staticfiles",
     "apps.identity",
     "apps.herd",
+    "apps.growth",
+    "apps.grazing",
+    "apps.workforce",
     "apps.inventory",
     "apps.milk",
     "apps.reproduction",
@@ -65,7 +69,7 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = "config.urls"
-PUBLIC_SCHEMA_URLCONF = "config.urls"
+PUBLIC_SCHEMA_URLCONF = "config.public_urls"
 
 TEMPLATES = [
     {
@@ -77,6 +81,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "apps.configuration.context_processors.tenant_configuration",
             ],
         },
     },

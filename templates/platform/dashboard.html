@@ -1,0 +1,60 @@
+{% extends "platform/base.html" %}
+
+{% block title %}Resumen | KORE Agro Plataforma{% endblock %}
+
+{% block content %}
+  <header class="platform-page-heading with-action">
+    <div>
+      <p class="platform-eyebrow">Estado general</p>
+      <h1>Control de plataforma</h1>
+      <p>Organizaciones, suscripciones y configuracion operativa desde un solo lugar.</p>
+    </div>
+    <a class="platform-button primary" href="{% url 'platform:organization_create' %}">Nueva organizacion</a>
+  </header>
+
+  <section class="platform-metrics" aria-label="Indicadores de plataforma">
+    <article><span>Organizaciones</span><strong>{{ organization_count }}</strong><small>{{ active_count }} activas</small></article>
+    <article class="metric-trial"><span>En prueba</span><strong>{{ trial_count }}</strong><small>Requieren seguimiento comercial</small></article>
+    <article class="metric-warning"><span>Vencen en 30 dias</span><strong>{{ expiring_count }}</strong><small>Renovaciones cercanas</small></article>
+    <article class="metric-blue"><span>Configuracion</span><strong>{{ profile_count }} / {{ capability_count }}</strong><small>Perfiles / capacidades</small></article>
+  </section>
+
+  <section class="platform-dashboard-grid">
+    <div class="platform-table-panel">
+      <div class="platform-panel-heading">
+        <div><h2>Organizaciones recientes</h2><p>Ultimas cuentas creadas en la plataforma.</p></div>
+        <a href="{% url 'platform:organization_list' %}">Ver todas</a>
+      </div>
+      <div class="platform-table-wrap">
+        <table>
+          <thead><tr><th>Organizacion</th><th>Perfil</th><th>Estado</th><th>Vigencia</th><th></th></tr></thead>
+          <tbody>
+            {% for row in recent_rows %}
+              <tr>
+                <td><strong>{{ row.organization.name }}</strong><small>{{ row.domain|default:row.organization.schema_name }}</small></td>
+                <td><div class="platform-tags">{% for profile in row.profiles %}<span>{{ profile.name }}</span>{% empty %}<small>Sin perfil</small>{% endfor %}</div></td>
+                <td><span class="platform-status {{ row.status }}">{{ row.status_label }}</span></td>
+                <td>{{ row.organization.paid_until|date:"d M Y"|default:"Sin limite" }}</td>
+                <td><a class="platform-table-link" href="{% url 'platform:organization_edit' row.organization.pk %}">Configurar</a></td>
+              </tr>
+            {% empty %}
+              <tr><td colspan="5" class="platform-empty">Todavia no hay organizaciones registradas.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <aside class="platform-summary-panel">
+      <div class="platform-panel-heading"><div><h2>Adopcion por perfil</h2><p>Organizaciones con cada perfil activo.</p></div></div>
+      <ul class="platform-profile-summary">
+        {% for profile in profile_summary %}
+          <li><span><strong>{{ profile.name }}</strong><small>{{ profile.code }}</small></span><b>{{ profile.organization_count }}</b></li>
+        {% empty %}
+          <li class="platform-empty">Configura el primer perfil.</li>
+        {% endfor %}
+      </ul>
+      <a class="platform-button secondary full" href="{% url 'platform:catalog' %}">Administrar catalogo</a>
+    </aside>
+  </section>
+{% endblock %}

@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+
+{% block title %}KORE Agro - Potreros y rotacion{% endblock %}
+
+{% block content %}
+  <section class="kore-page-heading">
+    <p class="eyebrow">Manejo del pastoreo</p>
+    <h1>Potreros y rotacion</h1>
+    <p>Registra donde esta cada lote, controla los dias de ocupacion y respeta el descanso del forraje.</p>
+  </section>
+
+  <section class="space-y-6">
+    <form method="get" class="grid gap-3 border-b border-neutral-800 pb-5 sm:grid-cols-[minmax(0,24rem)_auto]">
+      <label class="grid gap-1 text-xs uppercase text-neutral-500">Hacienda
+        <select name="farm">
+          {% for farm in farms %}
+            <option value="{{ farm.id }}" {% if selected_farm.id == farm.id %}selected{% endif %}>{{ farm.name }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <button class="self-end bg-emerald-500 px-4 py-2 text-sm font-semibold text-neutral-950" type="submit">Cambiar hacienda</button>
+    </form>
+
+    {% if grazing_message %}
+      <div class="rounded border border-emerald-700 bg-emerald-950 px-4 py-3 text-sm text-emerald-100">{{ grazing_message }}</div>
+    {% endif %}
+    {% if grazing_error %}
+      <div class="rounded border border-red-800 bg-red-950 px-4 py-3 text-sm text-red-100">{{ grazing_error }}</div>
+    {% endif %}
+
+    <section class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Resumen de potreros">
+      <article class="rounded border border-neutral-800 bg-neutral-900 p-4">
+        <div class="text-xs uppercase text-neutral-500">Potreros activos</div>
+        <div class="mt-2 text-2xl font-semibold">{{ paddock_count }}</div>
+      </article>
+      <article class="rounded border border-emerald-800 bg-emerald-950 p-4">
+        <div class="text-xs uppercase text-emerald-300">Disponibles</div>
+        <div class="mt-2 text-2xl font-semibold">{{ available_count }}</div>
+      </article>
+      <article class="rounded border border-amber-800 bg-amber-950 p-4">
+        <div class="text-xs uppercase text-amber-300">Ocupados</div>
+        <div class="mt-2 text-2xl font-semibold">{{ occupied_count }}</div>
+      </article>
+      <article class="rounded border border-neutral-800 bg-neutral-900 p-4">
+        <div class="text-xs uppercase text-neutral-500">Superficie en uso</div>
+        <div class="mt-2 text-2xl font-semibold">{{ occupied_hectares|floatformat:2 }} ha</div>
+      </article>
+    </section>
+
+    <section class="grid gap-6 xl:grid-cols-[minmax(0,1.4fr)_minmax(20rem,.6fr)]">
+      <div class="overflow-hidden rounded border border-neutral-800 bg-neutral-950">
+        <header class="border-b border-neutral-800 px-4 py-3">
+          <h2 class="text-sm font-semibold">Ocupacion actual</h2>
+          <p class="mt-1 text-xs text-neutral-500">Un lote solo puede ocupar un potrero a la vez.</p>
+        </header>
+        <div class="overflow-x-auto">
+          <table class="w-full min-w-[820px] text-left text-sm">
+            <thead class="bg-neutral-900 text-xs uppercase text-neutral-500">
+              <tr><th class="px-4 py-3">Potrero</th><th>Lote</th><th>Entrada</th><th>Animales</th><th>Dias</th><th>Salida</th></tr>
+            </thead>
+            <tbody class="divide-y divide-neutral-800">
+              {% for row in active_rows %}
+                <tr>
+                  <td class="px-4 py-3"><strong>{{ row.paddock.name }}</strong><br><span class="text-xs text-neutral-500">{{ row.paddock.area_hectares|floatformat:2 }} ha</span></td>
+                  <td>{{ row.active_period.group.name }}</td>
+                  <td>{{ row.active_period.started_on|date:"d/m/Y" }}</td>
+                  <td>{{ row.active_period.head_count }}</td>
+                  <td>{{ row.active_period.occupied_days }}</td>
+                  <td class="py-2 pr-3">
+                    <form method="post" action="{% url 'grazing:rotation_finish' row.active_period.id %}" class="grid grid-cols-[9rem_8rem_auto] gap-2">
+                      {% csrf_token %}
+                      <input name="ended_on" type="date" value="{% now 'Y-m-d' %}" aria-label="Fecha de salida" required>
+                      <input name="exit_biomass_kg_ha" type="number" min="0.01" step="0.01" placeholder="kg/ha salida" aria-label="Biomasa de salida">
+                      <button class="border border-amber-700 px-3 py-2 text-xs font-semibold text-amber-300" type="submit">Registrar salida</button>
+                    </form>
+                  </td>
+                </tr>
+              {% empty %}
+                <tr><td class="px-4 py-8 text-center text-neutral-500" colspan="6">No hay lotes ocupando potreros.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="rounded border border-neutral-800 bg-neutral-950">
+        <header class="border-b border-neutral-800 px-4 py-3">
+          <h2 class="text-sm font-semibold">Ingresar lote a potrero</h2>
+          <p class="mt-1 text-xs text-neutral-500">Si no indicas animales, se usa el hato activo del lote.</p>
+        </header>
+        <form method="post" action="{% url 'grazing:rotation_start' %}" class="grid gap-3 p-4">
+          {% csrf_token %}
+          {% include "dashboard/_form_fields.html" with form=start_form %}
+          <button class="bg-emerald-500 px-4 py-2 text-sm font-semibold text-neutral-950" type="submit">Registrar entrada</button>
+        </form>
+      </div>
+    </section>
+
+    <section class="grid gap-6 xl:grid-cols-[minmax(0,1.4fr)_minmax(20rem,.6fr)]">
+      <div class="overflow-hidden rounded border border-neutral-800 bg-neutral-950">
+        <header class="border-b border-neutral-800 px-4 py-3">
+          <h2 class="text-sm font-semibold">Estado de los potreros</h2>
+        </header>
+        <div class="overflow-x-auto">
+          <table class="w-full min-w-[760px] text-left text-sm">
+            <thead class="bg-neutral-900 text-xs uppercase text-neutral-500">
+              <tr><th class="px-4 py-3">Codigo</th><th>Potrero</th><th>Forraje</th><th>Area</th><th>Estado</th><th>Descanso</th><th></th></tr>
+            </thead>
+            <tbody class="divide-y divide-neutral-800">
+              {% for row in paddock_rows %}
+                <tr>
+                  <td class="px-4 py-3 font-mono">{{ row.paddock.code }}</td>
+                  <td class="font-semibold">{{ row.paddock.name }}</td>
+                  <td>{{ row.paddock.forage_type|default:"-" }}</td>
+                  <td>{{ row.paddock.area_hectares|floatformat:2 }} ha</td>
+                  <td><span class="{% if row.status == 'available' %}text-emerald-400{% elif row.status == 'occupied' %}text-amber-300{% else %}text-sky-300{% endif %} font-semibold">{{ row.status_label }}</span></td>
+                  <td>{% if row.status == 'occupied' %}En uso{% elif row.rest_days != None %}{{ row.rest_days }} dias{% if row.rest_days_remaining %} / faltan {{ row.rest_days_remaining }}{% endif %}{% else %}Sin historial{% endif %}</td>
+                  <td class="flex justify-end gap-2 py-2 pr-3">
+                    <a class="border border-neutral-700 px-2 py-1 text-xs text-neutral-300" href="{% url 'grazing:paddock_edit' row.paddock.id %}">Editar</a>
+                    <form method="post" action="{% url 'grazing:paddock_deactivate' row.paddock.id %}">
+                      {% csrf_token %}
+                      <button class="border border-red-800 px-2 py-1 text-xs text-red-300" type="submit">Desactivar</button>
+                    </form>
+                  </td>
+                </tr>
+              {% empty %}
+                <tr><td class="px-4 py-8 text-center text-neutral-500" colspan="7">Crea el primer potrero para comenzar la rotacion.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="rounded border border-neutral-800 bg-neutral-950">
+        <header class="border-b border-neutral-800 px-4 py-3">
+          <h2 class="text-sm font-semibold">{% if paddock_edit_id %}Editar potrero{% else %}Nuevo potrero{% endif %}</h2>
+        </header>
+        <form method="post" action="{% if paddock_edit_id %}{% url 'grazing:paddock_update' paddock_edit_id %}{% else %}{% url 'grazing:paddock_create' %}{% endif %}" class="grid gap-3 p-4">
+          {% csrf_token %}
+          {% include "dashboard/_form_fields.html" with form=paddock_form %}
+          <div class="flex gap-2">
+            <button class="bg-emerald-500 px-4 py-2 text-sm font-semibold text-neutral-950" type="submit">{% if paddock_edit_id %}Actualizar{% else %}Crear potrero{% endif %}</button>
+            {% if paddock_edit_id %}<a class="border border-neutral-700 px-4 py-2 text-sm text-neutral-300" href="{% url 'grazing:dashboard' %}?farm={{ selected_farm.id }}">Cancelar</a>{% endif %}
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <section class="overflow-hidden rounded border border-neutral-800 bg-neutral-950">
+      <header class="border-b border-neutral-800 px-4 py-3">
+        <h2 class="text-sm font-semibold">Historial reciente de rotaciones</h2>
+      </header>
+      <div class="overflow-x-auto">
+        <table class="w-full min-w-[720px] text-left text-sm">
+          <thead class="bg-neutral-900 text-xs uppercase text-neutral-500"><tr><th class="px-4 py-3">Potrero</th><th>Lote</th><th>Entrada</th><th>Salida</th><th>Dias</th><th>Animales</th><th>Biomasa</th></tr></thead>
+          <tbody class="divide-y divide-neutral-800">
+            {% for period in recent_periods %}
+              <tr><td class="px-4 py-3 font-semibold">{{ period.paddock.name }}</td><td>{{ period.group.name }}</td><td>{{ period.started_on|date:"d/m/Y" }}</td><td>{{ period.ended_on|date:"d/m/Y" }}</td><td>{{ period.occupied_days }}</td><td>{{ period.head_count }}</td><td>{% if period.entry_biomass_kg_ha %}{{ period.entry_biomass_kg_ha|floatformat:0 }}{% else %}-{% endif %} / {% if period.exit_biomass_kg_ha %}{{ period.exit_biomass_kg_ha|floatformat:0 }}{% else %}-{% endif %} kg/ha</td></tr>
+            {% empty %}
+              <tr><td class="px-4 py-6 text-neutral-500" colspan="7">Aun no hay rotaciones cerradas.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </section>
+{% endblock %}

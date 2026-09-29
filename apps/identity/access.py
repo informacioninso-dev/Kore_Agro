@@ -41,6 +41,28 @@ def field_access_required(view):
     )(view)
 
 
+def accessible_farms_for_user(user):
+    from apps.herd.models import Farm
+    from apps.identity.models import FieldAssignment
+
+    farms = Farm.objects.filter(is_active=True)
+    if user_has_any_role(user, MANAGEMENT_ROLES):
+        return farms
+
+    assigned_farm_id = (
+        FieldAssignment.objects.filter(user=user, is_active=True)
+        .values_list("farm_id", flat=True)
+        .first()
+    )
+    if assigned_farm_id:
+        return farms.filter(id=assigned_farm_id)
+
+    # A single-farm tenant remains zero-configuration for field workers.
+    if farms.count() == 1:
+        return farms
+    return farms.none()
+
+
 def require_api_role(user, roles: tuple[str, ...]) -> None:
     if not user_has_any_role(user, roles):
         raise PermissionDenied("No tienes permiso para acceder a este recurso.")

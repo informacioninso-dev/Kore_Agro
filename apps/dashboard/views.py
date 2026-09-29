@@ -1,4 +1,5 @@
 from datetime import timedelta
+from decimal import Decimal, InvalidOperation
 from typing import NamedTuple
 
 from django.db.models import QuerySet
@@ -8,6 +9,8 @@ from django.utils import timezone
 from django.utils.dateparse import parse_date
 from django.views.decorators.http import require_POST
 
+from apps.configuration.access import request_capability_codes
+from apps.finance.models import CostAllocation, RevenueEntry
 from apps.finance.services import (
     close_operating_period,
     get_animal_pnl,
@@ -21,10 +24,20 @@ from apps.finance.services import (
     record_animal_sale,
     record_operating_expense,
 )
+from apps.growth.models import WeightRecord
+from apps.growth.services import (
+    get_animal_growth,
+    get_growth_metrics,
+    record_weight,
+    summarize_groups,
+)
+from apps.health.models import Treatment
 from apps.health.services import active_milk_withdrawals, open_treatments
 from apps.herd.models import Animal, Farm, HerdGroup
 from apps.inventory.models import Input, InventoryMovement, StockLot
 from apps.inventory.services import adjust_stock, receive_input
+from apps.milk.models import MilkYield
+from apps.reproduction.models import ReproductionEvent
 from apps.reproduction.services import daily_reproduction_attention
 
 from .forms import (
@@ -37,6 +50,7 @@ from .forms import (
     OperatingExpenseForm,
     StockAdjustmentForm,
     StockLotForm,
+    WeightRecordForm,
 )
 
 
@@ -104,19 +118,35 @@ def _selected_animal(
 def _dashboard_context(request):
     start_date, end_date = _date_range(request)
     farm = _selected_farm(request)
-    pnl = get_operating_pnl(farm=farm, start_date=start_date, end_date=end_date)
-    attention = daily_reproduction_attention()
-    return {
+    capabilities = request_capability_codes(request)
+    context = {
         "farms": Farm.objects.filter(is_active=True).order_by("name"),
         "selected_farm": farm,
         "start_date": start_date,
         "end_date": end_date,
-        "pnl": pnl,
-        "dry_off": attention["dry_off"][:12],
-        "pregnancy_checks": attention["pregnancy_checks"][:12],
-        "withdrawals": active_milk_withdrawals()[:12],
-        "open_treatments": open_treatments()[:12],
     }
+    if "finance" in capabilities:
+        context["pnl"] = get_operating_pnl(
+            farm=farm,
+            start_date=start_date,
+            end_date=end_date,
+        )
+    if "reproduction" in capabilities:
+        attention = daily_reproduction_attention()
+        context.update(
+            {
+                "dry_off": attention["dry_off"][:12],
+                "pregnancy_checks": attention["pregnancy_checks"][:12],
+            }
+        )
+    if "health" in capabilities:
+        context.update(
+            {
+                "withdrawals": active_milk_withdrawals()[:12],
+                "open_treatments": open_treatments()[:12],
+            }
+        )
+    return context
 
 
 def home(request):
@@ -142,7 +172,9 @@ def information_center(request: HttpRequest) -> HttpResponse:
         },
         {
             "title": "Pronostico agrometeorologico",
-            "description": "Boletines para revisar lluvia, temperatura y condiciones de la temporada.",
+            "description": (
+                "Boletines para revisar lluvia, temperatura y condiciones de la temporada."
+            ),
             "meta": "INAMHI | Actualizacion segun publicacion",
             "url": "https://servicios.inamhi.gob.ec/pronostico-agrometeorologico-bisemanal-2026-julio-diciembre/",
         },
@@ -154,7 +186,10 @@ def information_center(request: HttpRequest) -> HttpResponse:
         },
         {
             "title": "Normativa vigente",
-            "description": "Revisa publicaciones y resoluciones oficiales antes de tomar una decision regulatoria.",
+            "description": (
+                "Revisa publicaciones y resoluciones oficiales antes de tomar una decision "
+                "regulatoria."
+            ),
             "meta": "Registro Oficial | Fuente legal",
             "url": "https://www.registroficial.gob.ec/",
         },
@@ -341,6 +376,258 @@ def _finance_error(
     )
 
 
+def _growth_target(request: HttpRequest) -> Decimal:
+    try:
+        target = Decimal(_request_value(request, "target") or "500")
+    except (InvalidOperation, TypeError):
+        return Decimal("500")
+    return target if Decimal("1") <= target <= Decimal("2000") else Decimal("500")
+
+
+def _growth_context(request: HttpRequest, overrides: dict | None = None) -> dict:
+    farm = _selected_farm(request)
+    group = _selected_group(request, farm)
+    target_weight = _growth_target(request)
+    metrics = get_growth_metrics(farm=farm, group=group) if farm else []
+    gains = [metric.daily_gain for metric in metrics if metric.daily_gain is not None]
+    average_daily_gain = None
+    if gains:
+        average_daily_gain = (sum(gains, Decimal("0")) / len(gains)).quantize(Decimal("0.001"))
+    underperformer_threshold = (
+        (average_daily_gain * Decimal("0.75")).quantize(Decimal("0.001"))
+        if average_daily_gain and average_daily_gain > 0
+        else Decimal("0")
+    )
+
+    cost_lines: dict = {}
+    dated_metrics = [metric for metric in metrics if metric.previous]
+    if dated_metrics:
+        first_date = min(metric.previous.weighed_on for metric in dated_metrics)
+        last_date = max(metric.latest.weighed_on for metric in dated_metrics)
+        animal_ids = [metric.animal.id for metric in dated_metrics]
+        for line in CostAllocation.objects.filter(
+            farm=farm,
+            animal_id__in=animal_ids,
+            cost_date__range=(first_date, last_date),
+        ).values("animal_id", "cost_date", "amount"):
+            cost_lines.setdefault(line["animal_id"], []).append(line)
+
+    rows = []
+    for metric in metrics:
+        direct_cost = Decimal("0")
+        if metric.previous:
+            direct_cost = sum(
+                (
+                    line["amount"]
+                    for line in cost_lines.get(metric.animal.id, [])
+                    if metric.previous.weighed_on <= line["cost_date"] <= metric.latest.weighed_on
+                ),
+                Decimal("0"),
+            )
+        cost_per_kg = None
+        if metric.gain_kg and metric.gain_kg > 0:
+            cost_per_kg = (direct_cost / metric.gain_kg).quantize(Decimal("0.01"))
+        rows.append(
+            {
+                "metric": metric,
+                "projected_days": metric.projected_days_to(target_weight),
+                "direct_cost": direct_cost,
+                "cost_per_kg": cost_per_kg,
+                "underperformer": (
+                    metric.daily_gain is not None and metric.daily_gain < underperformer_threshold
+                ),
+            }
+        )
+
+    latest_weights = [metric.latest.weight_kg for metric in metrics]
+    context = {
+        "farms": Farm.objects.filter(is_active=True).order_by("name"),
+        "groups": (
+            HerdGroup.objects.filter(farm=farm, is_active=True).order_by("name") if farm else []
+        ),
+        "selected_farm": farm,
+        "selected_group": group,
+        "target_weight": target_weight,
+        "growth_rows": rows,
+        "group_rows": summarize_groups(metrics),
+        "animals_weighed": len(metrics),
+        "average_weight": (
+            (sum(latest_weights, Decimal("0")) / len(latest_weights)).quantize(Decimal("0.01"))
+            if latest_weights
+            else None
+        ),
+        "average_daily_gain": average_daily_gain,
+        "underperformers": sum(1 for row in rows if row["underperformer"]),
+        "weight_form": WeightRecordForm(
+            farm=farm,
+            initial={"farm": farm, "weighed_on": timezone.localdate()},
+        ),
+        "growth_message": "",
+        "growth_error": "",
+    }
+    if overrides:
+        context.update(overrides)
+    return context
+
+
+def growth_dashboard(request: HttpRequest) -> HttpResponse:
+    return render(request, "dashboard/growth.html", _growth_context(request))
+
+
+@require_POST
+def growth_record_weight(request: HttpRequest) -> HttpResponse:
+    farm = _selected_farm(request)
+    form = WeightRecordForm(request.POST, farm=farm)
+    if not form.is_valid():
+        return render(
+            request,
+            "dashboard/growth.html",
+            _growth_context(
+                request,
+                {"weight_form": form, "growth_error": "Revisa los datos del pesaje."},
+            ),
+            status=422,
+        )
+
+    data = form.cleaned_data
+    record = record_weight(
+        farm=data["farm"],
+        animal=data["animal"],
+        weighed_on=data["weighed_on"],
+        weight_kg=data["weight_kg"],
+        body_condition_score=data["body_condition_score"],
+        scale_identifier=data["scale_identifier"],
+        operator=request.user,
+        notes=data["notes"],
+    )
+    return render(
+        request,
+        "dashboard/growth.html",
+        _growth_context(
+            request,
+            {"growth_message": f"Pesaje guardado: {record.animal.tag}, {record.weight_kg} kg."},
+        ),
+    )
+
+
+def _animal_timeline(animal: Animal) -> list[dict]:
+    timeline = []
+
+    def add(*, occurred_on, kind: str, title: str, detail: str = "") -> None:
+        timeline.append(
+            {
+                "occurred_on": occurred_on,
+                "kind": kind,
+                "title": title,
+                "detail": detail,
+            }
+        )
+
+    if animal.birth_date:
+        add(occurred_on=animal.birth_date, kind="hato", title="Nacimiento registrado")
+    if animal.entry_date:
+        add(occurred_on=animal.entry_date, kind="hato", title="Ingreso a la hacienda")
+
+    for row in WeightRecord.objects.filter(animal=animal).select_related("group")[:60]:
+        details = [f"{row.weight_kg} kg"]
+        if row.body_condition_score is not None:
+            details.append(f"condicion corporal {row.body_condition_score}")
+        if row.group:
+            details.append(row.group.name)
+        add(
+            occurred_on=row.weighed_on,
+            kind="peso",
+            title="Pesaje",
+            detail=" · ".join(details),
+        )
+
+    for row in ReproductionEvent.objects.filter(animal=animal)[:40]:
+        detail = row.sire_identifier or row.calf_tag
+        add(
+            occurred_on=row.occurred_on,
+            kind="reproduccion",
+            title=row.get_event_type_display(),
+            detail=detail,
+        )
+
+    for row in Treatment.objects.filter(animal=animal).select_related("input")[:40]:
+        detail = row.diagnosis
+        if row.input:
+            detail = f"{detail} · {row.input.name}"
+        add(
+            occurred_on=timezone.localtime(row.started_at).date(),
+            kind="sanidad",
+            title="Tratamiento",
+            detail=detail,
+        )
+
+    for row in MilkYield.objects.filter(animal=animal).select_related("session")[:40]:
+        detail = f"{row.liters} L"
+        if row.is_discarded:
+            detail = f"{detail} · leche descartada"
+        add(
+            occurred_on=row.session.milking_date,
+            kind="leche",
+            title="Ordeño",
+            detail=detail,
+        )
+
+    for row in InventoryMovement.objects.filter(animal=animal).select_related("input")[:40]:
+        add(
+            occurred_on=timezone.localtime(row.occurred_at).date(),
+            kind="bodega",
+            title=row.get_movement_type_display(),
+            detail=f"{row.input.name} · {row.quantity} {row.input.unit}",
+        )
+
+    for row in RevenueEntry.objects.filter(animal=animal)[:30]:
+        add(
+            occurred_on=row.revenue_date,
+            kind="finanzas",
+            title=row.get_revenue_type_display(),
+            detail=f"$ {row.gross_amount}",
+        )
+
+    for row in CostAllocation.objects.filter(animal=animal)[:30]:
+        add(
+            occurred_on=row.cost_date,
+            kind="finanzas",
+            title=row.get_cost_type_display(),
+            detail=f"$ {row.amount}" + (f" · {row.notes}" if row.notes else ""),
+        )
+
+    return sorted(
+        timeline,
+        key=lambda item: (item["occurred_on"], item["title"]),
+        reverse=True,
+    )[:150]
+
+
+def animal_timeline(request: HttpRequest, pk) -> HttpResponse:
+    animal = get_object_or_404(
+        Animal.objects.select_related("farm", "current_group", "dam"),
+        pk=pk,
+    )
+    growth = get_animal_growth(animal)
+    today = timezone.localdate()
+    start_date = animal.birth_date or animal.entry_date or (today - timedelta(days=365))
+    return render(
+        request,
+        "dashboard/animal_timeline.html",
+        {
+            "animal": animal,
+            "growth": growth,
+            "timeline": _animal_timeline(animal),
+            "pnl": get_operating_pnl(
+                farm=animal.farm,
+                animal=animal,
+                start_date=start_date,
+                end_date=today,
+            ),
+        },
+    )
+
+
 def _is_htmx(request: HttpRequest) -> bool:
     return request.headers.get("HX-Request") == "true"
 
@@ -352,28 +639,48 @@ def _active_queryset(model: type) -> QuerySet:
     return queryset
 
 
-def _master_data_context(overrides: dict | None = None) -> dict:
+def _master_data_context(request: HttpRequest, overrides: dict | None = None) -> dict:
+    capabilities = request_capability_codes(request)
+    has_herd = "herd" in capabilities
+    has_inventory = "inventory" in capabilities
     context = {
-        "farms": Farm.objects.filter(is_active=True).order_by("name"),
-        "groups": HerdGroup.objects.select_related("farm").filter(is_active=True),
-        "animals": Animal.objects.select_related("farm", "current_group", "dam").filter(
-            is_active=True
-        ),
-        "inputs": Input.objects.filter(is_active=True),
-        "stock_lots": StockLot.objects.select_related("farm", "input").filter(is_active=True),
-        "movements": InventoryMovement.objects.select_related("farm", "input", "animal", "group")[
-            :20
-        ],
-        "farm_form": FarmForm(),
-        "group_form": HerdGroupForm(),
-        "animal_form": AnimalForm(),
-        "input_form": InputForm(),
-        "stock_lot_form": StockLotForm(),
-        "receipt_form": InputReceiptForm(),
-        "adjustment_form": StockAdjustmentForm(),
         "message": "",
         "error": "",
     }
+    if has_herd or has_inventory:
+        context.update(
+            {
+                "farms": Farm.objects.filter(is_active=True).order_by("name"),
+                "farm_form": FarmForm(),
+            }
+        )
+    if has_herd:
+        context.update(
+            {
+                "groups": HerdGroup.objects.select_related("farm").filter(is_active=True),
+                "animals": Animal.objects.select_related("farm", "current_group", "dam").filter(
+                    is_active=True
+                ),
+                "group_form": HerdGroupForm(),
+                "animal_form": AnimalForm(),
+            }
+        )
+    if has_inventory:
+        context.update(
+            {
+                "inputs": Input.objects.filter(is_active=True),
+                "stock_lots": StockLot.objects.select_related("farm", "input").filter(
+                    is_active=True
+                ),
+                "movements": InventoryMovement.objects.select_related(
+                    "farm", "input", "animal", "group"
+                )[:20],
+                "input_form": InputForm(),
+                "stock_lot_form": StockLotForm(),
+                "receipt_form": InputReceiptForm(),
+                "adjustment_form": StockAdjustmentForm(),
+            }
+        )
     if overrides:
         context.update(overrides)
     return context
@@ -388,7 +695,7 @@ def _render_master_data(
     template_name = (
         "dashboard/_master_data_content.html" if _is_htmx(request) else "dashboard/master_data.html"
     )
-    return render(request, template_name, _master_data_context(overrides), status=status)
+    return render(request, template_name, _master_data_context(request, overrides), status=status)
 
 
 def master_data(request: HttpRequest) -> HttpResponse:

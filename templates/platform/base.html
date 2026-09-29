@@ -1,0 +1,50 @@
+{% load static %}
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}KORE Agro | Plataforma{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'platform/css/app.css' %}">
+  </head>
+  <body>
+    <div class="platform-layout">
+      <aside class="platform-sidebar">
+        <a class="platform-brand" href="{% url 'platform:dashboard' %}">
+          <span class="platform-brand-mark">K</span>
+          <span><strong>KORE Agro</strong><small>Control de plataforma</small></span>
+        </a>
+        <nav class="platform-nav" aria-label="Administracion de plataforma">
+          <a class="{% if request.resolver_match.url_name == 'dashboard' %}is-active{% endif %}" href="{% url 'platform:dashboard' %}">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="4" y="4" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.8"/><rect x="14" y="4" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.8"/><rect x="4" y="14" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.8"/><rect x="14" y="14" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.8"/></svg>
+            <span>Resumen</span>
+          </a>
+          <a class="{% if 'organization' in request.resolver_match.url_name %}is-active{% endif %}" href="{% url 'platform:organization_list' %}">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 20V7h10v13M14 11h6v9M8 10h2m-2 4h2m-2 4h2m9-4h-2m2 4h-2M2 20h20" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span>Organizaciones</span>
+          </a>
+          <a class="{% if 'catalog' in request.resolver_match.url_name or 'profile' in request.resolver_match.url_name or 'capability' in request.resolver_match.url_name %}is-active{% endif %}" href="{% url 'platform:catalog' %}">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 4h6v6H5V4Zm8 0h6v6h-6V4ZM5 12h6v8H5v-8Zm8 0h6v8h-6v-8Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+            <span>Perfiles y capacidades</span>
+          </a>
+        </nav>
+        <div class="platform-sidebar-footer">
+          <span class="platform-user"><strong>{{ request.user.username }}</strong><small>Superadministrador</small></span>
+          <form method="post" action="{% url 'platform:logout' %}">
+            {% csrf_token %}
+            <button class="platform-logout" type="submit">Cerrar sesion</button>
+          </form>
+        </div>
+      </aside>
+
+      <main class="platform-main">
+        {% if messages %}
+          <div class="platform-messages" aria-live="polite">
+            {% for message in messages %}<div class="platform-message">{{ message }}</div>{% endfor %}
+          </div>
+        {% endif %}
+        {% block content %}{% endblock %}
+      </main>
+    </div>
+  </body>
+</html>

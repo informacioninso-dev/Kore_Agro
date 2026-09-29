@@ -1,0 +1,29 @@
+{% extends "platform/base.html" %}
+
+{% block title %}Perfiles y capacidades | KORE Agro{% endblock %}
+
+{% block content %}
+  <header class="platform-page-heading">
+    <p class="platform-eyebrow">Configuracion comercial</p>
+    <h1>Perfiles y capacidades</h1>
+    <p>Claves estables que componen cada solucion de KORE Agro.</p>
+  </header>
+
+  <section class="platform-catalog-section">
+    <div class="platform-panel-heading with-action"><div><h2>Perfiles de empresa</h2><p>Contextos operativos combinables por organizacion.</p></div><a class="platform-button secondary" href="{% url 'platform:profile_create' %}">Nuevo perfil</a></div>
+    <div class="platform-table-wrap">
+      <table><thead><tr><th>Perfil</th><th>Clave</th><th>Organizaciones</th><th>Estado</th><th></th></tr></thead><tbody>
+        {% for profile in profiles %}<tr><td><strong>{{ profile.name }}</strong><small>{{ profile.description|default:"Sin descripcion" }}</small></td><td><code>{{ profile.code }}</code></td><td>{{ profile.organization_count }}</td><td><span class="platform-status {% if profile.is_active %}active{% else %}expired{% endif %}">{% if profile.is_active %}Disponible{% else %}Inactivo{% endif %}</span></td><td><a class="platform-table-link" href="{% url 'platform:profile_edit' profile.pk %}">Editar</a></td></tr>{% empty %}<tr><td colspan="5" class="platform-empty">No hay perfiles configurados.</td></tr>{% endfor %}
+      </tbody></table>
+    </div>
+  </section>
+
+  <section class="platform-catalog-section">
+    <div class="platform-panel-heading with-action"><div><h2>Capacidades</h2><p>Funciones contratables y reutilizables entre perfiles.</p></div><a class="platform-button secondary" href="{% url 'platform:capability_create' %}">Nueva capacidad</a></div>
+    <div class="platform-table-wrap">
+      <table><thead><tr><th>Capacidad</th><th>Categoria</th><th>Perfiles compatibles</th><th>Estado</th><th></th></tr></thead><tbody>
+        {% for capability in capabilities %}<tr><td><strong>{{ capability.name }}</strong><small><code>{{ capability.code }}</code> · {{ capability.description|default:"Sin descripcion" }}</small></td><td>{{ capability.get_category_display }}</td><td><div class="platform-tags">{% for profile in capability.compatible_profiles.all %}<span>{{ profile.name }}</span>{% empty %}<small>Uso transversal</small>{% endfor %}</div></td><td><span class="platform-status {% if capability.is_active %}active{% else %}expired{% endif %}">{% if capability.is_active %}Disponible{% else %}Inactiva{% endif %}</span></td><td><a class="platform-table-link" href="{% url 'platform:capability_edit' capability.pk %}">Editar</a></td></tr>{% empty %}<tr><td colspan="5" class="platform-empty">No hay capacidades configuradas.</td></tr>{% endfor %}
+      </tbody></table>
+    </div>
+  </section>
+{% endblock %}

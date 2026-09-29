@@ -10,7 +10,7 @@
       <p class="mt-2 text-sm leading-6 text-emerald-950/70">Revisa primero los animales y tareas de la jornada. Las cuentas quedan en el resumen.</p>
       <a class="mt-4 inline-block text-sm font-bold text-emerald-800 hover:text-emerald-950" href="{% url 'dashboard:information_center' %}">Ver informacion externa</a>
     </div>
-    <form class="mt-5 flex items-center gap-2 md:mt-0" hx-get="{% url 'dashboard:pnl_fragment' %}" hx-target="#pnl-panel" hx-swap="outerHTML">
+    {% if 'finance' in kore_capabilities %}<form class="mt-5 flex items-center gap-2 md:mt-0" hx-get="{% url 'dashboard:pnl_fragment' %}" hx-target="#pnl-panel" hx-swap="outerHTML">
       <label class="sr-only" for="farm">Hacienda</label>
       <select id="farm" name="farm" class="min-w-0 rounded-xl border border-[#c6d1bd] bg-[#fffdf7] px-3 py-3 text-sm font-medium text-emerald-950">
         {% for farm in farms %}
@@ -18,10 +18,10 @@
         {% endfor %}
       </select>
       <button class="rounded-xl bg-emerald-800 px-4 py-3 text-sm font-semibold text-white hover:bg-emerald-700">Ver</button>
-    </form>
+    </form>{% endif %}
   </section>
 
-  {% include "dashboard/_actions.html" %}
-  {% include "dashboard/_pnl.html" %}
+  {% if 'reproduction' in kore_capabilities or 'health' in kore_capabilities %}{% include "dashboard/_actions.html" %}{% endif %}
+  {% if 'finance' in kore_capabilities %}{% include "dashboard/_pnl.html" %}{% endif %}
 {% endblock %}
 
