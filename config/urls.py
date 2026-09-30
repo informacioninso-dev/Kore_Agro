@@ -12,6 +12,7 @@ urlpatterns = [
     path("cumplimiento/", include("apps.billing.urls")),
     path("pastoreo/", include("apps.grazing.urls")),
     path("trabajo/", include("apps.workforce.urls")),
+    path("compras/", include("apps.procurement.urls")),
     path("", include("apps.dashboard.urls")),
     path("field/", include("apps.sync.field_urls")),
     path("api/", sync_api.urls),

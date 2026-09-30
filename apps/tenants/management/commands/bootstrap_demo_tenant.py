@@ -15,6 +15,8 @@ from apps.configuration.models import (
 from apps.grazing.models import GrazingPeriod, Paddock
 from apps.herd.models import Animal, Farm, HerdGroup
 from apps.inventory.models import Input, StockLot
+from apps.parties.models import Counterparty
+from apps.procurement.models import PurchaseOrder, PurchaseOrderLine
 from apps.tenants.models import Client, Domain
 from apps.workforce.models import Worker, WorkTask
 
@@ -65,7 +67,9 @@ class Command(BaseCommand):
             "growth",
             "grazing",
             "workforce",
+            "counterparties",
             "inventory",
+            "procurement",
             "finance",
             "documents",
             "field_offline",
@@ -143,6 +147,41 @@ class Command(BaseCommand):
                     "unit": Input.Unit.ML,
                     "default_unit_cost": Decimal("0.18"),
                     "milk_withdrawal_hours": 72,
+                },
+            )
+
+            supplier, _ = Counterparty.objects.get_or_create(
+                identification_number="1790012345001",
+                defaults={
+                    "legal_name": "Agroinsumos Sierra S.A.",
+                    "trade_name": "AgroSierra",
+                    "identification_type": Counterparty.IdentificationType.RUC,
+                    "is_supplier": True,
+                    "email": "ventas@agrosierra.example",
+                    "phone": "022345678",
+                    "province": "Pichincha",
+                    "city": "Quito",
+                    "payment_terms_days": 30,
+                },
+            )
+            purchase_order, _ = PurchaseOrder.objects.get_or_create(
+                number="OC-DEMO-001",
+                defaults={
+                    "farm": farm,
+                    "supplier": supplier,
+                    "ordered_on": timezone.localdate(),
+                    "expected_on": timezone.localdate() + timedelta(days=3),
+                    "status": PurchaseOrder.Status.ORDERED,
+                    "notes": "Reposicion mensual de alimento",
+                },
+            )
+            PurchaseOrderLine.objects.get_or_create(
+                purchase_order=purchase_order,
+                input=balanceado,
+                defaults={
+                    "quantity_ordered": Decimal("40"),
+                    "unit_cost": Decimal("18.25"),
+                    "tax_rate": Decimal("0"),
                 },
             )
 

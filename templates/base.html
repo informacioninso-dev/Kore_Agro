@@ -38,6 +38,11 @@
               <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 8c1-2 3-3 7-3s6 1 7 3l2 1-2 2v5l-2 2-2-2H9l-2 2-2-2v-5l-2-2 2-1Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M9 10h.01M16 10h.01" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg><span>{% if 'herd' in kore_capabilities and 'inventory' in kore_capabilities %}Hato y bodega{% elif 'herd' in kore_capabilities %}Hato{% else %}Bodega{% endif %}</span>
             </a>
           {% endif %}
+          {% if 'procurement' in kore_capabilities %}
+          <a class="{% if '/compras/' in request.path %}is-active{% endif %}" href="/compras/">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 7h16l-1 13H5L4 7Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M8 10V6a4 4 0 0 1 8 0v4M8 15h8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span>Proveedores y compras</span>
+          </a>
+          {% endif %}
           {% if 'growth' in kore_capabilities %}
           <a class="{% if '/crecimiento/' in request.path or '/historial/' in request.path %}is-active{% endif %}" href="/crecimiento/">
             <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 19h16M6 16l4-4 3 2 5-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 7h3v3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Pesos y crecimiento</span>
@@ -86,6 +91,7 @@
         {% if 'herd' in kore_capabilities or 'inventory' in kore_capabilities %}<a class="{% if request.path == '/datos/' or '/crecimiento/' in request.path or '/historial/' in request.path %}is-active{% endif %}" href="/datos/"><span>{% if 'herd' in kore_capabilities %}Hato{% else %}Bodega{% endif %}</span></a>{% endif %}
         {% if 'grazing' in kore_capabilities %}<a class="{% if '/pastoreo/' in request.path %}is-active{% endif %}" href="/pastoreo/"><span>Potreros</span></a>{% endif %}
         {% if 'workforce' in kore_capabilities %}<a class="{% if '/trabajo/' in request.path %}is-active{% endif %}" href="/trabajo/"><span>Tareas</span></a>{% endif %}
+        {% if 'procurement' in kore_capabilities %}<a class="{% if '/compras/' in request.path %}is-active{% endif %}" href="/compras/"><span>Compras</span></a>{% endif %}
         {% if 'field_offline' in kore_capabilities %}<a class="is-field" href="/field/"><span>Registrar</span></a>{% endif %}
         {% if 'finance' in kore_capabilities %}<a class="{% if '/finanzas/' in request.path %}is-active{% endif %}" href="/finanzas/"><span>Cuentas</span></a>{% endif %}
       </nav>

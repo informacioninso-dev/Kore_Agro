@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+
+{% block title %}KORE Agro - Compras{% endblock %}
+
+{% block content %}
+  <section class="kore-page-heading">
+    <p class="eyebrow">Abastecimiento</p>
+    <h1>Proveedores y compras</h1>
+    <p>Controla lo pedido, lo pendiente y cada ingreso a bodega desde una sola operacion.</p>
+  </section>
+
+  <section class="space-y-6">
+    <form method="get" class="grid gap-3 border-b border-neutral-800 pb-5 sm:grid-cols-[minmax(0,24rem)_auto]">
+      <label class="grid gap-1 text-xs uppercase text-neutral-500">Hacienda
+        <select name="farm">
+          {% for farm in farms %}
+            <option value="{{ farm.id }}" {% if selected_farm.id == farm.id %}selected{% endif %}>{{ farm.name }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <button class="self-end bg-emerald-500 px-4 py-2 text-sm font-semibold text-neutral-950" type="submit">Cambiar hacienda</button>
+    </form>
+
+    {% if procurement_message %}
+      <div class="rounded border border-emerald-700 bg-emerald-950 px-4 py-3 text-sm text-emerald-100">{{ procurement_message }}</div>
+    {% endif %}
+    {% if procurement_error %}
+      <div class="rounded border border-red-800 bg-red-950 px-4 py-3 text-sm text-red-100">{{ procurement_error }}</div>
+    {% endif %}
+
+    <section class="grid gap-3 sm:grid-cols-2 xl:grid-cols-5" aria-label="Resumen de compras">
+      <article class="rounded border border-neutral-800 bg-neutral-900 p-4"><div class="text-xs uppercase text-neutral-500">Proveedores</div><div class="mt-2 text-2xl font-semibold">{{ supplier_count }}</div></article>
+      <article class="rounded border border-sky-800 bg-sky-950 p-4"><div class="text-xs uppercase text-sky-300">Ordenes abiertas</div><div class="mt-2 text-2xl font-semibold">{{ open_orders }}</div></article>
+      <article class="rounded border border-neutral-800 bg-neutral-900 p-4"><div class="text-xs uppercase text-neutral-500">Unidades pendientes</div><div class="mt-2 text-2xl font-semibold">{{ pending_units|floatformat:3 }}</div></article>
+      <article class="rounded border border-amber-800 bg-amber-950 p-4"><div class="text-xs uppercase text-amber-300">Valor comprometido</div><div class="mt-2 text-2xl font-semibold">$ {{ committed_value|floatformat:2 }}</div></article>
+      <article class="rounded border border-emerald-800 bg-emerald-950 p-4"><div class="text-xs uppercase text-emerald-300">Recibido este mes</div><div class="mt-2 text-2xl font-semibold">$ {{ month_received|floatformat:2 }}</div></article>
+    </section>
+
+    <section class="grid gap-6 xl:grid-cols-[minmax(0,1.55fr)_minmax(22rem,.45fr)]">
+      <div class="space-y-6">
+        <section class="overflow-hidden rounded border border-neutral-800 bg-neutral-950">
+          <header class="border-b border-neutral-800 px-4 py-3">
+            <h2 class="text-sm font-semibold">Ordenes de compra</h2>
+            <p class="mt-1 text-xs text-neutral-500">El valor recibido entra al inventario; el costo se reconoce cuando el insumo se consume.</p>
+          </header>
+          <div class="overflow-x-auto">
+            <table class="w-full min-w-[920px] text-left text-sm">
+              <thead class="bg-neutral-900 text-xs uppercase text-neutral-500"><tr><th class="px-4 py-3">Orden</th><th>Proveedor</th><th>Entrega</th><th>Detalle</th><th>Total</th><th>Estado</th></tr></thead>
+              <tbody class="divide-y divide-neutral-800">
+                {% for order in orders %}
+                  <tr>
+                    <td class="px-4 py-3"><strong>{{ order.number }}</strong><br><span class="text-xs text-neutral-500">{{ order.ordered_on|date:"d/m/Y" }}</span></td>
+                    <td>{{ order.supplier.display_name }}<br><span class="text-xs text-neutral-500">{{ order.supplier.identification_number|default:"Sin identificacion" }}</span></td>
+                    <td>{% if order.expected_on %}{{ order.expected_on|date:"d/m/Y" }}{% else %}<span class="text-neutral-600">Sin fecha</span>{% endif %}</td>
+                    <td class="py-3">
+                      {% for line in order.lines.all %}
+                        <div class="mb-1"><strong>{{ line.input.name }}</strong> {{ line.quantity_received|floatformat:3 }}/{{ line.quantity_ordered|floatformat:3 }} {{ line.input.get_unit_display }} <span class="text-neutral-500">a $ {{ line.unit_cost|floatformat:4 }}</span></div>
+                      {% empty %}<span class="text-neutral-600">Sin insumos</span>{% endfor %}
+                    </td>
+                    <td>$ {{ order.total_amount|floatformat:2 }}</td>
+                    <td><span class="inline-flex rounded border border-neutral-700 px-2 py-1 text-xs">{{ order.get_status_display }}</span></td>
+                  </tr>
+                {% empty %}
+                  <tr><td class="px-4 py-8 text-center text-neutral-500" colspan="6">Aun no hay ordenes para esta hacienda.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="overflow-hidden rounded border border-neutral-800 bg-neutral-950">
+          <header class="border-b border-neutral-800 px-4 py-3"><h2 class="text-sm font-semibold">Recepciones recientes</h2></header>
+          <div class="overflow-x-auto">
+            <table class="w-full min-w-[760px] text-left text-sm">
+              <thead class="bg-neutral-900 text-xs uppercase text-neutral-500"><tr><th class="px-4 py-3">Fecha</th><th>Orden</th><th>Documento</th><th>Ingreso</th><th>Valor</th></tr></thead>
+              <tbody class="divide-y divide-neutral-800">
+                {% for receipt in receipts %}
+                  {% for line in receipt.lines.all %}
+                    <tr><td class="px-4 py-3">{{ receipt.received_at|date:"d/m/Y H:i" }}</td><td>{{ receipt.purchase_order.number }}<br><span class="text-xs text-neutral-500">{{ receipt.purchase_order.supplier.display_name }}</span></td><td>{{ receipt.supplier_document|default:"-" }}</td><td>{{ line.order_line.input.name }}<br><span class="text-xs text-neutral-500">{{ line.quantity|floatformat:3 }} · lote {{ line.lot_code|default:"sin codigo" }}</span></td><td>$ {{ line.total_amount|floatformat:2 }}</td></tr>
+                  {% endfor %}
+                {% empty %}
+                  <tr><td class="px-4 py-8 text-center text-neutral-500" colspan="5">No hay recepciones registradas.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="overflow-hidden rounded border border-neutral-800 bg-neutral-950">
+          <header class="border-b border-neutral-800 px-4 py-3"><h2 class="text-sm font-semibold">Directorio de proveedores</h2></header>
+          <div class="overflow-x-auto">
+            <table class="w-full min-w-[720px] text-left text-sm">
+              <thead class="bg-neutral-900 text-xs uppercase text-neutral-500"><tr><th class="px-4 py-3">Proveedor</th><th>Identificacion</th><th>Contacto</th><th>Plazo</th><th></th></tr></thead>
+              <tbody class="divide-y divide-neutral-800">
+                {% for supplier in suppliers %}
+                  <tr><td class="px-4 py-3"><strong>{{ supplier.display_name }}</strong><br><span class="text-xs text-neutral-500">{{ supplier.role_labels }}</span></td><td>{{ supplier.get_identification_type_display }} {{ supplier.identification_number|default:"-" }}</td><td>{{ supplier.phone|default:"-" }}<br><span class="text-xs text-neutral-500">{{ supplier.email }}</span></td><td>{{ supplier.payment_terms_days }} dias</td><td class="whitespace-nowrap"><a class="text-emerald-400" href="{% url 'procurement:supplier_edit' supplier.id %}?farm={{ selected_farm.id }}">Editar</a><form class="ml-3 inline" method="post" action="{% url 'procurement:supplier_deactivate' supplier.id %}">{% csrf_token %}<input type="hidden" name="farm" value="{{ selected_farm.id }}"><button class="text-red-400" type="submit">Desactivar</button></form></td></tr>
+                {% empty %}
+                  <tr><td class="px-4 py-8 text-center text-neutral-500" colspan="5">Registra el primer proveedor.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+
+      <aside class="space-y-4">
+        <details class="rounded border border-emerald-800 bg-neutral-950" open>
+          <summary class="cursor-pointer px-4 py-3 text-sm font-semibold">1. Crear orden</summary>
+          <form class="grid gap-3 border-t border-neutral-800 p-4" method="post" action="{% url 'procurement:order_create' %}">
+            {% csrf_token %}
+            {% for field in order_form %}<label class="grid gap-1 text-xs text-neutral-400">{{ field.label }}{{ field }}{% for error in field.errors %}<span class="text-red-400">{{ error }}</span>{% endfor %}</label>{% endfor %}
+            <button class="bg-emerald-500 px-4 py-2 text-sm font-semibold text-neutral-950" type="submit">Guardar borrador</button>
+          </form>
+        </details>
+
+        <details class="rounded border border-neutral-800 bg-neutral-950" {% if line_form.errors %}open{% endif %}>
+          <summary class="cursor-pointer px-4 py-3 text-sm font-semibold">2. Agregar insumo</summary>
+          <form class="grid gap-3 border-t border-neutral-800 p-4" method="post" action="{% url 'procurement:line_create' %}">
+            {% csrf_token %}<input type="hidden" name="farm" value="{{ selected_farm.id }}">
+            {% for field in line_form %}<label class="grid gap-1 text-xs text-neutral-400">{{ field.label }}{{ field }}{% for error in field.errors %}<span class="text-red-400">{{ error }}</span>{% endfor %}</label>{% endfor %}
+            <button class="border border-neutral-700 px-4 py-2 text-sm font-semibold" type="submit">Agregar a la orden</button>
+          </form>
+        </details>
+
+        <details class="rounded border border-neutral-800 bg-neutral-950" {% if action_form.errors %}open{% endif %}>
+          <summary class="cursor-pointer px-4 py-3 text-sm font-semibold">3. Emitir o cancelar</summary>
+          <form class="grid gap-3 border-t border-neutral-800 p-4" method="post" action="{% url 'procurement:order_action' %}">
+            {% csrf_token %}<input type="hidden" name="farm" value="{{ selected_farm.id }}">
+            {% for field in action_form %}<label class="grid gap-1 text-xs text-neutral-400">{{ field.label }}{{ field }}{% for error in field.errors %}<span class="text-red-400">{{ error }}</span>{% endfor %}</label>{% endfor %}
+            <button class="border border-sky-700 bg-sky-950 px-4 py-2 text-sm font-semibold text-sky-100" type="submit">Aplicar accion</button>
+          </form>
+        </details>
+
+        <details class="rounded border border-emerald-800 bg-emerald-950/30" {% if receipt_form.errors %}open{% endif %}>
+          <summary class="cursor-pointer px-4 py-3 text-sm font-semibold text-emerald-200">4. Recibir en bodega</summary>
+          <form class="grid gap-3 border-t border-emerald-900 p-4" method="post" action="{% url 'procurement:receipt_create' %}">
+            {% csrf_token %}<input type="hidden" name="farm" value="{{ selected_farm.id }}">
+            {% for field in receipt_form %}<label class="grid gap-1 text-xs text-neutral-400">{{ field.label }}{{ field }}{% for error in field.errors %}<span class="text-red-400">{{ error }}</span>{% endfor %}</label>{% endfor %}
+            <button class="bg-emerald-500 px-4 py-2 text-sm font-semibold text-neutral-950" type="submit">Registrar recepcion</button>
+          </form>
+        </details>
+
+        <details class="rounded border border-neutral-800 bg-neutral-950" {% if supplier_edit_id or supplier_form.errors %}open{% endif %}>
+          <summary class="cursor-pointer px-4 py-3 text-sm font-semibold">{% if supplier_edit_id %}Editar contraparte{% else %}Nuevo proveedor{% endif %}</summary>
+          <form class="grid gap-3 border-t border-neutral-800 p-4" method="post" action="{% if supplier_edit_id %}{% url 'procurement:supplier_update' supplier_edit_id %}{% else %}{% url 'procurement:supplier_create' %}{% endif %}">
+            {% csrf_token %}<input type="hidden" name="farm" value="{{ selected_farm.id }}">
+            {% for field in supplier_form %}
+              {% if field.field.widget.input_type == 'checkbox' %}<label class="flex items-center gap-2 text-xs text-neutral-300">{{ field }} {{ field.label }}</label>{% else %}<label class="grid gap-1 text-xs text-neutral-400">{{ field.label }}{{ field }}{% for error in field.errors %}<span class="text-red-400">{{ error }}</span>{% endfor %}</label>{% endif %}
+            {% endfor %}
+            <button class="border border-neutral-700 px-4 py-2 text-sm font-semibold" type="submit">{% if supplier_edit_id %}Actualizar contraparte{% else %}Guardar proveedor{% endif %}</button>
+          </form>
+        </details>
+      </aside>
+    </section>
+  </section>
+{% endblock %}

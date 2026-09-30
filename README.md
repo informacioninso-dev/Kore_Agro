@@ -288,10 +288,10 @@ apps/
 | PWA offline, cola FIFO, idempotencia y conflictos | Implementado |
 | Panel superadmin, perfiles y registro de capacidades | Implementado en esquema publico |
 | Menus, rutas, API y PWA gobernados por capacidades | Implementado |
-| Productores y contrapartes compartidas | Por construir |
+| Productores y contrapartes compartidas | Base implementada; validada inicialmente con proveedores |
 | Recepcion agroproductiva, calidad, lotes y liquidaciones | Por construir |
 | Procesamiento, despacho y comercializacion general | Por construir |
-| Proveedores y compras completas | Por construir |
+| Proveedores, ordenes, recepciones e ingreso a inventario | Implementado en alcance operativo inicial |
 
 ### Panel Superadmin
 
@@ -353,8 +353,8 @@ nuevas cadenas:
 1. **Infraestructura de control:** panel superadmin, perfiles, capacidades,
    aprovisionamiento de tenants y aplicacion contextual implementados como base;
    continuar con auditoria de cambios y observabilidad operativa.
-2. **Consolidar Ganaderia:** pesajes, historial, potreros, rotacion, personal y tareas
-   operativas ya implementados; continuar con proveedores y compras.
+2. **Consolidar Ganaderia:** pesajes, historial, potreros, rotacion, personal, tareas,
+   proveedores y compras operativas implementados; continuar con auditoria transversal.
 3. **Construir el nucleo agroproductivo compartido:** contrapartes, catalogo,
    recepcion, pesaje, calidad, lotes, trazabilidad, liquidaciones y despacho.
 4. **Activar Centro de Acopio:** primer perfil que pruebe el flujo compartido completo,
@@ -648,6 +648,7 @@ Estado actual:
 - Vision de plataforma definida: una marca, perfiles combinables, capacidades
   contratables y motores agroproductivos compartidos.
 - Panel superadmin aplicado en el esquema publico con aprovisionamiento de tenants.
+- Compras aplicado: contrapartes, ordenes, recepcion parcial e ingreso trazable a bodega.
 
 ## Eventos Con Impacto Economico
 
