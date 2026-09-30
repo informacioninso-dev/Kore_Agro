@@ -9,9 +9,26 @@ from apps.configuration.models import OrganizationCapability
 from apps.finance.models import CostAllocation
 from apps.inventory.models import InventoryMovement, StockLot
 from apps.parties.models import Counterparty
-from apps.procurement.models import GoodsReceipt, PurchaseOrder, PurchaseOrderLine
-from apps.procurement.services import receive_purchase_line
-from tests.factories import authenticated_manager_client, create_tenant, seed_farm
+from apps.procurement.models import (
+    GoodsReceipt,
+    PurchaseInvoice,
+    PurchaseOrder,
+    PurchaseOrderLine,
+)
+from apps.procurement.services import (
+    approve_purchase_order,
+    receive_purchase_line,
+    record_purchase_invoice,
+    record_purchase_payment,
+    return_purchase_receipt,
+    submit_purchase_order,
+)
+from tests.factories import (
+    authenticated_manager_client,
+    authenticated_owner_client,
+    create_tenant,
+    seed_farm,
+)
 
 
 def _supplier(**overrides) -> Counterparty:
@@ -107,6 +124,7 @@ def test_manager_completes_supplier_order_and_receipt_web_flow():
     with tenant_context(tenant):
         farm, _, _, feed, _ = seed_farm()
     client = authenticated_manager_client(tenant)
+    owner_client = authenticated_owner_client(tenant)
     today = timezone.localdate().isoformat()
 
     supplier_response = client.post(
@@ -167,10 +185,22 @@ def test_manager_completes_supplier_order_and_receipt_web_flow():
         {
             "farm": str(farm.id),
             "purchase_order": str(order.id),
-            "action": "place",
+            "action": "submit",
+            "rejection_reason": "",
         },
     )
     assert place_response.status_code == 200
+
+    approve_response = owner_client.post(
+        "/compras/ordenes/accion/",
+        {
+            "farm": str(farm.id),
+            "purchase_order": str(order.id),
+            "action": "approve",
+            "rejection_reason": "",
+        },
+    )
+    assert approve_response.status_code == 200
 
     receipt_response = client.post(
         "/compras/recepciones/crear/",
@@ -191,6 +221,98 @@ def test_manager_completes_supplier_order_and_receipt_web_flow():
         order.refresh_from_db()
         assert order.status == PurchaseOrder.Status.RECEIVED
         assert StockLot.objects.get(farm=farm, input=feed, lot_code="WEB-01").quantity_on_hand == 5
+
+
+@pytest.mark.django_db(transaction=True)
+def test_approval_payment_and_return_keep_payable_and_stock_consistent():
+    tenant = create_tenant("purchasepayable")
+    with tenant_context(tenant):
+        farm, _, _, feed, _ = seed_farm()
+        supplier = _supplier(identification_number="1790000000003")
+        order = PurchaseOrder.objects.create(
+            farm=farm,
+            supplier=supplier,
+            number="OC-PAY-001",
+        )
+        line = PurchaseOrderLine.objects.create(
+            purchase_order=order,
+            input=feed,
+            quantity_ordered=Decimal("10"),
+            unit_cost=Decimal("10"),
+            tax_rate=Decimal("12"),
+        )
+        submit_purchase_order(order)
+        approve_purchase_order(order)
+        receipt = receive_purchase_line(
+            order_line=line,
+            quantity=Decimal("10"),
+            lot_code="PAY-01",
+        )
+        invoice = record_purchase_invoice(
+            purchase_order=order,
+            invoice_number="FAC-PAY-01",
+            issued_on=timezone.localdate(),
+            due_on=timezone.localdate(),
+        )
+        payment = record_purchase_payment(
+            invoice=invoice,
+            amount=Decimal("40"),
+            paid_on=timezone.localdate(),
+            method="bank_transfer",
+        )
+        purchase_return = return_purchase_receipt(
+            receipt_line=receipt.line,
+            quantity=Decimal("2"),
+            reason="Sacos rotos",
+        )
+
+        invoice.refresh_from_db()
+        stock = StockLot.objects.get(farm=farm, input=feed, lot_code="PAY-01")
+        assert payment.amount == Decimal("40")
+        assert purchase_return.credit_amount == Decimal("22.400000")
+        assert invoice.total_amount == Decimal("112.0000")
+        assert invoice.credit_amount == Decimal("22.4000")
+        assert invoice.balance_due == Decimal("49.6000")
+        assert invoice.status == PurchaseInvoice.Status.PARTIAL
+        assert stock.quantity_on_hand == Decimal("8.000")
+        assert purchase_return.inventory_movement.movement_type == "return"
+        assert CostAllocation.objects.count() == 0
+
+
+@pytest.mark.django_db(transaction=True)
+def test_manager_cannot_approve_or_pay_supplier_invoice():
+    tenant = create_tenant("purchasepermissions")
+    with tenant_context(tenant):
+        farm, _, _, feed, _ = seed_farm()
+        supplier = _supplier(identification_number="1790000000004")
+        order = PurchaseOrder.objects.create(
+            farm=farm,
+            supplier=supplier,
+            number="OC-PERM-001",
+            status=PurchaseOrder.Status.PENDING_APPROVAL,
+        )
+        PurchaseOrderLine.objects.create(
+            purchase_order=order,
+            input=feed,
+            quantity_ordered=Decimal("1"),
+            unit_cost=Decimal("10"),
+        )
+    manager = authenticated_manager_client(tenant)
+
+    response = manager.post(
+        "/compras/ordenes/accion/",
+        {
+            "farm": str(farm.id),
+            "purchase_order": str(order.id),
+            "action": "approve",
+            "rejection_reason": "",
+        },
+    )
+
+    assert response.status_code == 403
+    with tenant_context(tenant):
+        order.refresh_from_db()
+        assert order.status == PurchaseOrder.Status.PENDING_APPROVAL
 
 
 @pytest.mark.django_db(transaction=True)

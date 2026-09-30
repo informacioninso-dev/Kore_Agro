@@ -1,6 +1,6 @@
 from decimal import Decimal
 
-from django.core.exceptions import ValidationError
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.db.models import DecimalField, ExpressionWrapper, F, Sum
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, render
@@ -11,18 +11,32 @@ from apps.herd.models import Farm
 from apps.parties.models import Counterparty
 
 from .forms import (
+    PurchaseInvoiceForm,
     PurchaseLineForm,
     PurchaseOrderActionForm,
     PurchaseOrderForm,
+    PurchasePaymentForm,
     PurchaseReceiptForm,
+    PurchaseReturnForm,
     SupplierForm,
 )
-from .models import GoodsReceipt, GoodsReceiptLine, PurchaseOrder
+from .models import (
+    GoodsReceipt,
+    GoodsReceiptLine,
+    PurchaseInvoice,
+    PurchaseOrder,
+    PurchaseReturn,
+)
 from .services import (
     add_purchase_line,
+    approve_purchase_order,
     cancel_purchase_order,
-    place_purchase_order,
     receive_purchase_line,
+    record_purchase_invoice,
+    record_purchase_payment,
+    reject_purchase_order,
+    return_purchase_receipt,
+    submit_purchase_order,
 )
 
 
@@ -53,10 +67,14 @@ def _procurement_context(
     suppliers = Counterparty.objects.filter(is_active=True, is_supplier=True)
     orders = PurchaseOrder.objects.none()
     receipts = GoodsReceipt.objects.none()
+    invoices = PurchaseInvoice.objects.none()
+    purchase_returns = PurchaseReturn.objects.none()
     open_orders = 0
     pending_units = Decimal("0")
     committed_value = Decimal("0")
     month_received = Decimal("0")
+    payable_balance = Decimal("0")
+    overdue_invoices = 0
     if selected_farm:
         orders = (
             PurchaseOrder.objects.filter(farm=selected_farm)
@@ -66,7 +84,21 @@ def _procurement_context(
         receipts = (
             GoodsReceipt.objects.filter(purchase_order__farm=selected_farm)
             .select_related("purchase_order__supplier")
-            .prefetch_related("lines__order_line__input")[:20]
+            .prefetch_related("lines__order_line__input", "lines__returns")[:20]
+        )
+        invoices = (
+            PurchaseInvoice.objects.filter(purchase_order__farm=selected_farm)
+            .select_related("purchase_order__supplier")
+            .prefetch_related("payments")[:30]
+        )
+        purchase_returns = (
+            PurchaseReturn.objects.filter(
+                receipt_line__receipt__purchase_order__farm=selected_farm
+            )
+            .select_related(
+                "receipt_line__receipt__purchase_order",
+                "receipt_line__order_line__input",
+            )[:20]
         )
         active_orders = [
             order
@@ -97,6 +129,8 @@ def _procurement_context(
             ).aggregate(total=Sum(line_total))["total"]
             or Decimal("0")
         )
+        payable_balance = sum((invoice.balance_due for invoice in invoices), Decimal("0"))
+        overdue_invoices = sum(1 for invoice in invoices if invoice.is_overdue)
 
     context = {
         "farms": Farm.objects.filter(is_active=True).order_by("name"),
@@ -104,11 +138,15 @@ def _procurement_context(
         "suppliers": suppliers,
         "orders": orders,
         "receipts": receipts,
+        "invoices": invoices,
+        "purchase_returns": purchase_returns,
         "supplier_count": suppliers.count(),
         "open_orders": open_orders,
         "pending_units": pending_units,
         "committed_value": committed_value,
         "month_received": month_received,
+        "payable_balance": payable_balance,
+        "overdue_invoices": overdue_invoices,
         "supplier_form": SupplierForm(),
         "order_form": PurchaseOrderForm(
             farm=selected_farm,
@@ -119,8 +157,11 @@ def _procurement_context(
             },
         ),
         "line_form": PurchaseLineForm(farm=selected_farm),
-        "action_form": PurchaseOrderActionForm(farm=selected_farm),
+        "action_form": PurchaseOrderActionForm(farm=selected_farm, user=request.user),
         "receipt_form": PurchaseReceiptForm(farm=selected_farm),
+        "invoice_form": PurchaseInvoiceForm(farm=selected_farm),
+        "payment_form": PurchasePaymentForm(farm=selected_farm),
+        "return_form": PurchaseReturnForm(farm=selected_farm),
         "supplier_edit_id": None,
         "procurement_message": "",
         "procurement_error": "",
@@ -202,7 +243,9 @@ def order_create(request: HttpRequest) -> HttpResponse:
     form = PurchaseOrderForm(request.POST, farm=farm)
     if not form.is_valid():
         return _render_error(request, farm, {"order_form": form}, "Revisa la orden.")
-    order = form.save()
+    order = form.save(commit=False)
+    order.requested_by = request.user
+    order.save()
     return _render_success(request, order.farm, f"Orden {order.number} creada en borrador.")
 
 
@@ -233,14 +276,48 @@ def line_create(request: HttpRequest) -> HttpResponse:
 @require_POST
 def order_action(request: HttpRequest) -> HttpResponse:
     farm = _selected_farm(request)
-    form = PurchaseOrderActionForm(request.POST, farm=farm)
+    requested_action = request.POST.get("action")
+    required_permission = {
+        PurchaseOrderActionForm.Action.SUBMIT: "procurement.submit_purchaseorder",
+        PurchaseOrderActionForm.Action.APPROVE: "procurement.approve_purchaseorder",
+        PurchaseOrderActionForm.Action.REJECT: "procurement.approve_purchaseorder",
+        PurchaseOrderActionForm.Action.CANCEL: "procurement.change_purchaseorder",
+    }.get(requested_action)
+    if required_permission and not request.user.has_perm(required_permission):
+        raise PermissionDenied("No tienes permiso para ejecutar esta accion.")
+    form = PurchaseOrderActionForm(request.POST, farm=farm, user=request.user)
     if not form.is_valid():
         return _render_error(request, farm, {"action_form": form}, "Revisa la accion.")
     try:
-        if form.cleaned_data["action"] == PurchaseOrderActionForm.Action.PLACE:
-            order = place_purchase_order(form.cleaned_data["purchase_order"])
-            message = f"Orden {order.number} emitida al proveedor."
+        action = form.cleaned_data["action"]
+        if action == PurchaseOrderActionForm.Action.SUBMIT:
+            if not request.user.has_perm("procurement.submit_purchaseorder"):
+                raise PermissionDenied
+            order = submit_purchase_order(
+                form.cleaned_data["purchase_order"],
+                user=request.user,
+            )
+            message = f"Orden {order.number} enviada para aprobacion."
+        elif action == PurchaseOrderActionForm.Action.APPROVE:
+            if not request.user.has_perm("procurement.approve_purchaseorder"):
+                raise PermissionDenied
+            order = approve_purchase_order(
+                form.cleaned_data["purchase_order"],
+                user=request.user,
+            )
+            message = f"Orden {order.number} aprobada y emitida al proveedor."
+        elif action == PurchaseOrderActionForm.Action.REJECT:
+            if not request.user.has_perm("procurement.approve_purchaseorder"):
+                raise PermissionDenied
+            order = reject_purchase_order(
+                form.cleaned_data["purchase_order"],
+                user=request.user,
+                reason=form.cleaned_data["rejection_reason"],
+            )
+            message = f"Orden {order.number} rechazada."
         else:
+            if not request.user.has_perm("procurement.change_purchaseorder"):
+                raise PermissionDenied
             order = cancel_purchase_order(form.cleaned_data["purchase_order"])
             message = f"Orden {order.number} cancelada."
     except ValidationError as exc:
@@ -272,6 +349,82 @@ def receipt_create(request: HttpRequest) -> HttpResponse:
         request,
         order.farm,
         f"Recepcion de {result.line.quantity} registrada en {order.number} e inventario.",
+    )
+
+
+@require_POST
+def invoice_create(request: HttpRequest) -> HttpResponse:
+    farm = _selected_farm(request)
+    form = PurchaseInvoiceForm(request.POST, farm=farm)
+    if not form.is_valid():
+        return _render_error(request, farm, {"invoice_form": form}, "Revisa la factura.")
+    data = form.cleaned_data
+    try:
+        invoice = record_purchase_invoice(
+            purchase_order=data["purchase_order"],
+            invoice_number=data["invoice_number"],
+            issued_on=data["issued_on"],
+            due_on=data["due_on"],
+            user=request.user,
+            notes=data["notes"],
+        )
+    except ValidationError as exc:
+        return _render_error(request, farm, {"invoice_form": form}, _error_text(exc))
+    return _render_success(
+        request,
+        invoice.purchase_order.farm,
+        f"Factura {invoice.invoice_number} registrada por $ {invoice.total_amount}.",
+    )
+
+
+@require_POST
+def payment_create(request: HttpRequest) -> HttpResponse:
+    farm = _selected_farm(request)
+    form = PurchasePaymentForm(request.POST, farm=farm)
+    if not form.is_valid():
+        return _render_error(request, farm, {"payment_form": form}, "Revisa el pago.")
+    data = form.cleaned_data
+    try:
+        payment = record_purchase_payment(
+            invoice=data["invoice"],
+            amount=data["amount"],
+            paid_on=data["paid_on"],
+            method=data["method"],
+            reference=data["reference"],
+            notes=data["notes"],
+            user=request.user,
+        )
+    except ValidationError as exc:
+        return _render_error(request, farm, {"payment_form": form}, _error_text(exc))
+    return _render_success(
+        request,
+        payment.invoice.purchase_order.farm,
+        f"Pago de $ {payment.amount} aplicado a {payment.invoice.invoice_number}.",
+    )
+
+
+@require_POST
+def return_create(request: HttpRequest) -> HttpResponse:
+    farm = _selected_farm(request)
+    form = PurchaseReturnForm(request.POST, farm=farm)
+    if not form.is_valid():
+        return _render_error(request, farm, {"return_form": form}, "Revisa la devolucion.")
+    data = form.cleaned_data
+    try:
+        purchase_return = return_purchase_receipt(
+            receipt_line=data["receipt_line"],
+            quantity=data["quantity"],
+            reason=data["reason"],
+            returned_at=data["returned_at"],
+            credit_document=data["credit_document"],
+            user=request.user,
+        )
+    except ValidationError as exc:
+        return _render_error(request, farm, {"return_form": form}, _error_text(exc))
+    return _render_success(
+        request,
+        purchase_return.receipt_line.receipt.purchase_order.farm,
+        f"Devolucion de {purchase_return.quantity} registrada y descontada de bodega.",
     )
 
 

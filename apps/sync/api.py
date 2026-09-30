@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from django.db.models import Q
+from django.db.models import F, Q
 from django.utils import timezone
 from ninja import NinjaAPI
 from ninja.errors import HttpError
@@ -19,11 +19,13 @@ from apps.identity.access import (
 )
 from apps.identity.models import FieldDevice
 from apps.inventory.models import Input
+from apps.parties.models import Counterparty
+from apps.procurement.models import PurchaseOrder, PurchaseOrderLine
 from apps.reproduction.services import daily_reproduction_attention
 from apps.workforce.models import Worker, WorkTask
 
 from .schemas import ActionQueueResponseSchema, ActionQueueSchema
-from .services import ActionEventMessage, process_action_queue
+from .services import EVENT_PERMISSIONS, ActionEventMessage, process_action_queue
 
 api = NinjaAPI(title="KORE AGRO Sync API", version="0.1.0", auth=django_auth)
 
@@ -172,6 +174,43 @@ def field_bootstrap(request):
                 "scheduled_for",
             )
         )
+    suppliers = []
+    purchase_lines = []
+    if (
+        "procurement" in capabilities
+        and request.auth.has_perm("procurement.receive_purchaseorder")
+    ):
+        suppliers = list(
+            Counterparty.objects.filter(is_active=True, is_supplier=True).values(
+                "id",
+                "legal_name",
+                "trade_name",
+                "identification_number",
+            )
+        )
+        purchase_lines = list(
+            PurchaseOrderLine.objects.filter(
+                purchase_order__farm_id__in=farm_ids,
+                purchase_order__status__in=(
+                    PurchaseOrder.Status.ORDERED,
+                    PurchaseOrder.Status.PARTIAL,
+                ),
+                quantity_received__lt=F("quantity_ordered"),
+            ).values(
+                "id",
+                "input_id",
+                "quantity_ordered",
+                "quantity_received",
+                "unit_cost",
+                farm_id=F("purchase_order__farm_id"),
+                order_number=F("purchase_order__number"),
+                supplier_id=F("purchase_order__supplier_id"),
+                supplier_legal_name=F("purchase_order__supplier__legal_name"),
+                supplier_trade_name=F("purchase_order__supplier__trade_name"),
+                input_name=F("input__name"),
+                unit=F("input__unit"),
+            )
+        )
     tenant = getattr(request, "tenant", None)
     attention = daily_reproduction_attention()
     today_actions = []
@@ -247,6 +286,8 @@ def field_bootstrap(request):
         "active_grazing": active_grazing,
         "workers": workers,
         "work_tasks": work_tasks,
+        "suppliers": suppliers,
+        "purchase_lines": purchase_lines,
         "today_actions": today_actions,
     }
 
@@ -284,5 +325,10 @@ def sync_events(request, payload: ActionQueueSchema):
         allowed_farm_ids=allowed_farm_ids,
         allowed_capabilities=set(capabilities),
         allowed_worker_ids=allowed_worker_ids,
+        allowed_permissions={
+            permission
+            for permission in EVENT_PERMISSIONS.values()
+            if request.auth.has_perm(permission)
+        },
     )
     return {"results": [result.__dict__ for result in results]}

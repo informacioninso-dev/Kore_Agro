@@ -15,7 +15,7 @@ from apps.configuration.models import (
     ProfileDefinition,
 )
 from apps.herd.models import Animal, Farm, HerdGroup
-from apps.identity.access import ROLE_MANAGER, ensure_role_groups
+from apps.identity.access import ROLE_MANAGER, ROLE_OWNER, ensure_role_groups
 from apps.inventory.models import Input, StockLot
 from apps.tenants.models import Client, Domain
 
@@ -27,6 +27,7 @@ TEST_TENANT_CAPABILITIES = {
     "growth": ("Pesajes y crecimiento", CapabilityDefinition.Category.ANALYTICS),
     "grazing": ("Pastoreo y potreros", CapabilityDefinition.Category.PRODUCTION),
     "workforce": ("Personal y tareas", CapabilityDefinition.Category.OPERATIONS),
+    "audit": ("Auditoria transversal", CapabilityDefinition.Category.COMPLIANCE),
     "counterparties": ("Productores y contrapartes", CapabilityDefinition.Category.FOUNDATION),
     "inventory": ("Inventario", CapabilityDefinition.Category.INVENTORY),
     "procurement": ("Proveedores y compras", CapabilityDefinition.Category.INVENTORY),
@@ -85,6 +86,19 @@ def authenticated_manager_client(tenant: Client) -> HttpClient:
             password="test-password",
         )
         user.groups.add(Group.objects.get(name=ROLE_MANAGER))
+
+    return authenticated_client(tenant, user)
+
+
+def authenticated_owner_client(tenant: Client) -> HttpClient:
+    """Build an HTTP client with an owner session in the tenant schema."""
+    with tenant_context(tenant):
+        ensure_role_groups()
+        user = get_user_model().objects.create_user(
+            username=f"owner-{uuid4().hex[:8]}",
+            password="test-password",
+        )
+        user.groups.add(Group.objects.get(name=ROLE_OWNER))
 
     return authenticated_client(tenant, user)
 

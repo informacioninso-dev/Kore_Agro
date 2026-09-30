@@ -25,6 +25,8 @@ from apps.inventory.services import (
 )
 from apps.milk.models import MilkingSession
 from apps.milk.services import MilkRecord, register_milking
+from apps.procurement.models import PurchaseOrderLine
+from apps.procurement.services import receive_purchase_line
 from apps.reproduction.models import ReproductionEvent
 from apps.reproduction.services import record_reproduction_event
 from apps.workforce.models import Worker, WorkTask
@@ -48,6 +50,7 @@ GRAZING_ROTATION_STARTED = "grazing.rotation_started"
 GRAZING_ROTATION_FINISHED = "grazing.rotation_finished"
 WORKFORCE_TASK_STARTED = "workforce.task_started"
 WORKFORCE_TASK_COMPLETED = "workforce.task_completed"
+PROCUREMENT_PURCHASE_RECEIVED = "procurement.purchase_received"
 SUPPORTED_SCHEMA_VERSIONS = frozenset({1})
 EVENT_CAPABILITIES = {
     MILK_MILKING_RECORDED: "milk",
@@ -66,6 +69,10 @@ EVENT_CAPABILITIES = {
     GRAZING_ROTATION_FINISHED: "grazing",
     WORKFORCE_TASK_STARTED: "workforce",
     WORKFORCE_TASK_COMPLETED: "workforce",
+    PROCUREMENT_PURCHASE_RECEIVED: "procurement",
+}
+EVENT_PERMISSIONS = {
+    PROCUREMENT_PURCHASE_RECEIVED: "procurement.receive_purchaseorder",
 }
 
 
@@ -97,6 +104,7 @@ def process_action_queue(
     allowed_farm_ids: set[UUID] | None = None,
     allowed_capabilities: set[str] | None = None,
     allowed_worker_ids: set[UUID] | None = None,
+    allowed_permissions: set[str] | None = None,
 ) -> list[ActionEventResult]:
     ordered_events = sorted(events, key=lambda item: item.client_sequence)
     results = []
@@ -118,6 +126,7 @@ def process_action_queue(
             allowed_farm_ids=allowed_farm_ids,
             allowed_capabilities=allowed_capabilities,
             allowed_worker_ids=allowed_worker_ids,
+            allowed_permissions=allowed_permissions,
         )
         results.append(result)
         if result.status in {"failed", "conflict"}:
@@ -131,12 +140,14 @@ def process_action_event(
     allowed_farm_ids: set[UUID] | None = None,
     allowed_capabilities: set[str] | None = None,
     allowed_worker_ids: set[UUID] | None = None,
+    allowed_permissions: set[str] | None = None,
 ) -> ActionEventResult:
     try:
         _validate_message_envelope(message)
         _validate_event_capability(message, allowed_capabilities)
         _validate_farm_access(message, allowed_farm_ids)
         _validate_workforce_access(message, allowed_worker_ids)
+        _validate_event_permission(message, allowed_permissions)
     except (ValidationError, ValueError, TypeError) as exc:
         return ActionEventResult(
             event_id=message.event_id,
@@ -209,6 +220,17 @@ def _validate_event_capability(
         raise ValidationError(
             f"La capacidad '{required}' no esta habilitada para esta organizacion."
         )
+
+
+def _validate_event_permission(
+    message: ActionEventMessage,
+    allowed_permissions: set[str] | None,
+) -> None:
+    if allowed_permissions is None:
+        return
+    required = EVENT_PERMISSIONS.get(message.event_type)
+    if required and required not in allowed_permissions:
+        raise ValidationError("No tienes permiso para ejecutar esta accion.")
 
 
 def _validate_workforce_access(
@@ -687,6 +709,28 @@ def _handle_task_completed(event: IncomingEvent):
     )
 
 
+def _handle_purchase_received(event: IncomingEvent):
+    payload = event.payload
+    farm = _get_farm(payload)
+    order_line_id = payload.get("order_line_id")
+    if not order_line_id:
+        raise ValidationError("order_line_id is required.")
+    order_line = PurchaseOrderLine.objects.select_related("purchase_order").get(
+        pk=order_line_id,
+        purchase_order__farm=farm,
+    )
+    return receive_purchase_line(
+        order_line=order_line,
+        quantity=_payload_decimal(payload, "quantity", minimum=Decimal("0"), exclusive=True),
+        received_at=event.occurred_at,
+        lot_code=payload.get("lot_code", ""),
+        expires_on=_payload_date(payload.get("expires_on")),
+        supplier_document=payload.get("supplier_document", ""),
+        source_event_id=event.event_id,
+        notes=payload.get("notes", ""),
+    )
+
+
 _HANDLERS = {
     MILK_MILKING_RECORDED: _handle_milking,
     REPRODUCTION_HEAT_RECORDED: partial(
@@ -716,6 +760,7 @@ _HANDLERS = {
     GRAZING_ROTATION_FINISHED: _handle_grazing_finished,
     WORKFORCE_TASK_STARTED: _handle_task_started,
     WORKFORCE_TASK_COMPLETED: _handle_task_completed,
+    PROCUREMENT_PURCHASE_RECEIVED: _handle_purchase_received,
 }
 
 SUPPORTED_EVENT_TYPES = tuple(_HANDLERS)

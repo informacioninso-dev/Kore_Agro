@@ -73,6 +73,11 @@
             <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 3h8l3 3v15H7z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11h5m-5 4h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span>Guias y documentos</span>
           </a>
           {% endif %}
+          {% if 'audit' in kore_capabilities and perms.audit.view_auditevent %}
+          <a class="{% if '/auditoria/' in request.path %}is-active{% endif %}" href="/auditoria/">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 3h12v18H6V3Z" stroke="currentColor" stroke-width="1.8"/><path d="M9 8h6M9 12h6M9 16h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span>Auditoria</span>
+          </a>
+          {% endif %}
         </nav>
         <div class="kore-sidebar-footer">
           <a href="{% url 'dashboard:information_center' %}">Informacion externa</a>

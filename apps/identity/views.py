@@ -3,6 +3,8 @@ from django.contrib.auth.forms import AuthenticationForm
 from django.shortcuts import redirect, render
 from django.urls import reverse
 
+from .access import ensure_role_groups
+
 
 def login_view(request):
     if request.user.is_authenticated:
@@ -16,6 +18,7 @@ def login_view(request):
         {"placeholder": "Tu contraseña", "autocomplete": "current-password"}
     )
     if request.method == "POST" and form.is_valid():
+        ensure_role_groups()
         login(request, form.get_user())
         return redirect(request.POST.get("next") or reverse("dashboard:home"))
 

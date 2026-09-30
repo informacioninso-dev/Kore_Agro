@@ -8,7 +8,8 @@
   let db;
   let masters = {
     farms: [], groups: [], animals: [], inputs: [], paddocks: [], active_grazing: [],
-    workers: [], work_tasks: [], today_actions: [], capabilities: []
+    workers: [], work_tasks: [], suppliers: [], purchase_lines: [],
+    today_actions: [], capabilities: []
   };
   let selectedFarmId = "";
   let syncInFlight = false;
@@ -274,6 +275,8 @@
       active_grazing: [],
       workers: [],
       work_tasks: [],
+      suppliers: [],
+      purchase_lines: [],
       today_actions: [],
       capabilities: [],
       ...data
@@ -281,6 +284,7 @@
     applyCapabilityVisibility();
     configureFarmContext();
     populateSelects();
+    configurePurchaseReceipt();
     renderTodayActions();
   }
 
@@ -387,7 +391,10 @@
     const required = select.hasAttribute("required");
     let items = masters[source] || [];
     if (
-      ["animals", "groups", "paddocks", "active_grazing", "workers", "work_tasks"].includes(source)
+      [
+        "animals", "groups", "paddocks", "active_grazing", "workers", "work_tasks",
+        "purchase_lines"
+      ].includes(source)
       && selectedFarmId
     ) {
       items = items.filter((item) => item.farm_id === selectedFarmId);
@@ -475,6 +482,11 @@
     if (source === "work_tasks") {
       const assigned = item.assigned_to__full_name ? ` - ${item.assigned_to__full_name}` : "";
       return `${item.title}${assigned}`;
+    }
+    if (source === "purchase_lines") {
+      const supplier = item.supplier_trade_name || item.supplier_legal_name;
+      const remaining = Number(item.quantity_ordered) - Number(item.quantity_received);
+      return `${item.order_number} - ${supplier} - ${item.input_name} (${remaining} ${item.unit})`;
     }
     return item.name || item.id;
   }
@@ -626,14 +638,14 @@
       event.preventDefault();
       const data = formData(event.currentTarget);
       queueEvent(
-        "inventory.input_received",
+        "procurement.purchase_received",
         cleanPayload({
           farm_id: selectedFarmId,
-          input_id: data.input_id,
+          order_line_id: data.order_line_id,
           quantity: data.quantity,
-          unit_cost: data.unit_cost,
           lot_code: data.lot_code,
           expires_on: data.expires_on,
+          supplier_document: data.supplier_document,
           notes: data.notes
         })
       );
@@ -715,6 +727,10 @@
       .querySelector("#taskForm [name='action_kind']")
       .addEventListener("change", configureTaskForm);
     configureTaskForm();
+    document
+      .querySelector("#receiptForm [name='order_line_id']")
+      .addEventListener("change", configurePurchaseReceipt);
+    configurePurchaseReceipt();
 
   }
 
@@ -742,6 +758,23 @@
     });
   }
 
+  function configurePurchaseReceipt() {
+    const form = document.getElementById("receiptForm");
+    const selected = (masters.purchase_lines || []).find(
+      (item) => item.id === form.elements.order_line_id.value
+    );
+    const hint = document.getElementById("purchaseLineHint");
+    if (!selected) {
+      hint.textContent = "Selecciona una orden pendiente.";
+      form.elements.quantity.removeAttribute("max");
+      return;
+    }
+    const remaining = Number(selected.quantity_ordered) - Number(selected.quantity_received);
+    form.elements.quantity.max = String(remaining);
+    form.elements.quantity.placeholder = `Maximo ${remaining}`;
+    hint.textContent = `Precio aprobado: $ ${selected.unit_cost} por ${selected.unit}.`;
+  }
+
   function bindFarmContext() {
     document.getElementById("farmSelect").addEventListener("change", (event) => {
       selectedFarmId = event.target.value;
@@ -750,6 +783,7 @@
       localStorage.setItem(farmStorageKey(), selectedFarmId);
       document.querySelectorAll(".form").forEach((form) => resetFieldForm(form));
       populateSelects();
+      configurePurchaseReceipt();
       renderTodayActions();
     });
   }
@@ -797,6 +831,7 @@
     refreshFormSources(form);
     if (form.id === "grazingForm") configureGrazingForm();
     if (form.id === "taskForm") configureTaskForm();
+    if (form.id === "receiptForm") configurePurchaseReceipt();
   }
 
   function setTodayDefaults() {

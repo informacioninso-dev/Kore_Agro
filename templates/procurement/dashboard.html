@@ -28,12 +28,14 @@
       <div class="rounded border border-red-800 bg-red-950 px-4 py-3 text-sm text-red-100">{{ procurement_error }}</div>
     {% endif %}
 
-    <section class="grid gap-3 sm:grid-cols-2 xl:grid-cols-5" aria-label="Resumen de compras">
+    <section class="grid gap-3 sm:grid-cols-2 xl:grid-cols-7" aria-label="Resumen de compras">
       <article class="rounded border border-neutral-800 bg-neutral-900 p-4"><div class="text-xs uppercase text-neutral-500">Proveedores</div><div class="mt-2 text-2xl font-semibold">{{ supplier_count }}</div></article>
       <article class="rounded border border-sky-800 bg-sky-950 p-4"><div class="text-xs uppercase text-sky-300">Ordenes abiertas</div><div class="mt-2 text-2xl font-semibold">{{ open_orders }}</div></article>
       <article class="rounded border border-neutral-800 bg-neutral-900 p-4"><div class="text-xs uppercase text-neutral-500">Unidades pendientes</div><div class="mt-2 text-2xl font-semibold">{{ pending_units|floatformat:3 }}</div></article>
       <article class="rounded border border-amber-800 bg-amber-950 p-4"><div class="text-xs uppercase text-amber-300">Valor comprometido</div><div class="mt-2 text-2xl font-semibold">$ {{ committed_value|floatformat:2 }}</div></article>
       <article class="rounded border border-emerald-800 bg-emerald-950 p-4"><div class="text-xs uppercase text-emerald-300">Recibido este mes</div><div class="mt-2 text-2xl font-semibold">$ {{ month_received|floatformat:2 }}</div></article>
+      <article class="rounded border border-amber-800 bg-amber-950 p-4"><div class="text-xs uppercase text-amber-300">Por pagar</div><div class="mt-2 text-2xl font-semibold">$ {{ payable_balance|floatformat:2 }}</div></article>
+      <article class="rounded border {% if overdue_invoices %}border-red-800 bg-red-950{% else %}border-neutral-800 bg-neutral-900{% endif %} p-4"><div class="text-xs uppercase {% if overdue_invoices %}text-red-300{% else %}text-neutral-500{% endif %}">Facturas vencidas</div><div class="mt-2 text-2xl font-semibold">{{ overdue_invoices }}</div></article>
     </section>
 
     <section class="grid gap-6 xl:grid-cols-[minmax(0,1.55fr)_minmax(22rem,.45fr)]">
@@ -58,11 +60,37 @@
                       {% empty %}<span class="text-neutral-600">Sin insumos</span>{% endfor %}
                     </td>
                     <td>$ {{ order.total_amount|floatformat:2 }}</td>
-                    <td><span class="inline-flex rounded border border-neutral-700 px-2 py-1 text-xs">{{ order.get_status_display }}</span></td>
+                    <td><span class="inline-flex rounded border border-neutral-700 px-2 py-1 text-xs">{{ order.get_status_display }}</span>{% if order.approved_by %}<br><span class="text-xs text-neutral-500">Aprobo {{ order.approved_by.username }}</span>{% endif %}{% if order.rejection_reason %}<br><span class="text-xs text-red-400">{{ order.rejection_reason }}</span>{% endif %}</td>
                   </tr>
                 {% empty %}
                   <tr><td class="px-4 py-8 text-center text-neutral-500" colspan="6">Aun no hay ordenes para esta hacienda.</td></tr>
                 {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="overflow-hidden rounded border border-neutral-800 bg-neutral-950">
+          <header class="border-b border-neutral-800 px-4 py-3"><h2 class="text-sm font-semibold">Cuentas por pagar</h2></header>
+          <div class="overflow-x-auto">
+            <table class="w-full min-w-[820px] text-left text-sm">
+              <thead class="bg-neutral-900 text-xs uppercase text-neutral-500"><tr><th class="px-4 py-3">Factura</th><th>Proveedor</th><th>Vence</th><th>Total</th><th>Credito</th><th>Pagado</th><th>Saldo</th><th>Estado</th></tr></thead>
+              <tbody class="divide-y divide-neutral-800">
+                {% for invoice in invoices %}
+                  <tr class="{% if invoice.is_overdue %}bg-red-950/30{% endif %}"><td class="px-4 py-3"><strong>{{ invoice.invoice_number }}</strong><br><span class="text-xs text-neutral-500">{{ invoice.purchase_order.number }}</span></td><td>{{ invoice.purchase_order.supplier.display_name }}</td><td>{{ invoice.due_on|date:"d/m/Y" }}</td><td>$ {{ invoice.total_amount|floatformat:2 }}</td><td>$ {{ invoice.credit_amount|floatformat:2 }}</td><td>$ {{ invoice.amount_paid|floatformat:2 }}</td><td><strong>$ {{ invoice.balance_due|floatformat:2 }}</strong></td><td>{{ invoice.get_status_display }}</td></tr>
+                {% empty %}<tr><td class="px-4 py-8 text-center text-neutral-500" colspan="8">No hay facturas de compra registradas.</td></tr>{% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="overflow-hidden rounded border border-neutral-800 bg-neutral-950">
+          <header class="border-b border-neutral-800 px-4 py-3"><h2 class="text-sm font-semibold">Devoluciones a proveedores</h2></header>
+          <div class="overflow-x-auto">
+            <table class="w-full min-w-[720px] text-left text-sm">
+              <thead class="bg-neutral-900 text-xs uppercase text-neutral-500"><tr><th class="px-4 py-3">Fecha</th><th>Orden</th><th>Insumo</th><th>Cantidad</th><th>Credito</th><th>Motivo</th></tr></thead>
+              <tbody class="divide-y divide-neutral-800">
+                {% for item in purchase_returns %}<tr><td class="px-4 py-3">{{ item.returned_at|date:"d/m/Y H:i" }}</td><td>{{ item.receipt_line.receipt.purchase_order.number }}</td><td>{{ item.receipt_line.order_line.input.name }}</td><td>{{ item.quantity|floatformat:3 }}</td><td>$ {{ item.credit_amount|floatformat:2 }}</td><td>{{ item.reason }}</td></tr>{% empty %}<tr><td class="px-4 py-8 text-center text-neutral-500" colspan="6">No hay devoluciones registradas.</td></tr>{% endfor %}
               </tbody>
             </table>
           </div>
@@ -93,7 +121,7 @@
               <thead class="bg-neutral-900 text-xs uppercase text-neutral-500"><tr><th class="px-4 py-3">Proveedor</th><th>Identificacion</th><th>Contacto</th><th>Plazo</th><th></th></tr></thead>
               <tbody class="divide-y divide-neutral-800">
                 {% for supplier in suppliers %}
-                  <tr><td class="px-4 py-3"><strong>{{ supplier.display_name }}</strong><br><span class="text-xs text-neutral-500">{{ supplier.role_labels }}</span></td><td>{{ supplier.get_identification_type_display }} {{ supplier.identification_number|default:"-" }}</td><td>{{ supplier.phone|default:"-" }}<br><span class="text-xs text-neutral-500">{{ supplier.email }}</span></td><td>{{ supplier.payment_terms_days }} dias</td><td class="whitespace-nowrap"><a class="text-emerald-400" href="{% url 'procurement:supplier_edit' supplier.id %}?farm={{ selected_farm.id }}">Editar</a><form class="ml-3 inline" method="post" action="{% url 'procurement:supplier_deactivate' supplier.id %}">{% csrf_token %}<input type="hidden" name="farm" value="{{ selected_farm.id }}"><button class="text-red-400" type="submit">Desactivar</button></form></td></tr>
+                  <tr><td class="px-4 py-3"><strong>{{ supplier.display_name }}</strong><br><span class="text-xs text-neutral-500">{{ supplier.role_labels }}</span></td><td>{{ supplier.get_identification_type_display }} {{ supplier.identification_number|default:"-" }}</td><td>{{ supplier.phone|default:"-" }}<br><span class="text-xs text-neutral-500">{{ supplier.email }}</span></td><td>{{ supplier.payment_terms_days }} dias</td><td class="whitespace-nowrap">{% if perms.parties.change_counterparty %}<a class="text-emerald-400" href="{% url 'procurement:supplier_edit' supplier.id %}?farm={{ selected_farm.id }}">Editar</a><form class="ml-3 inline" method="post" action="{% url 'procurement:supplier_deactivate' supplier.id %}">{% csrf_token %}<input type="hidden" name="farm" value="{{ selected_farm.id }}"><button class="text-red-400" type="submit">Desactivar</button></form>{% endif %}</td></tr>
                 {% empty %}
                   <tr><td class="px-4 py-8 text-center text-neutral-500" colspan="5">Registra el primer proveedor.</td></tr>
                 {% endfor %}
@@ -104,6 +132,7 @@
       </div>
 
       <aside class="space-y-4">
+        {% if perms.procurement.add_purchaseorder %}
         <details class="rounded border border-emerald-800 bg-neutral-950" open>
           <summary class="cursor-pointer px-4 py-3 text-sm font-semibold">1. Crear orden</summary>
           <form class="grid gap-3 border-t border-neutral-800 p-4" method="post" action="{% url 'procurement:order_create' %}">
@@ -112,7 +141,9 @@
             <button class="bg-emerald-500 px-4 py-2 text-sm font-semibold text-neutral-950" type="submit">Guardar borrador</button>
           </form>
         </details>
+        {% endif %}
 
+        {% if perms.procurement.change_purchaseorder %}
         <details class="rounded border border-neutral-800 bg-neutral-950" {% if line_form.errors %}open{% endif %}>
           <summary class="cursor-pointer px-4 py-3 text-sm font-semibold">2. Agregar insumo</summary>
           <form class="grid gap-3 border-t border-neutral-800 p-4" method="post" action="{% url 'procurement:line_create' %}">
@@ -121,16 +152,20 @@
             <button class="border border-neutral-700 px-4 py-2 text-sm font-semibold" type="submit">Agregar a la orden</button>
           </form>
         </details>
+        {% endif %}
 
+        {% if perms.procurement.submit_purchaseorder or perms.procurement.approve_purchaseorder or perms.procurement.change_purchaseorder %}
         <details class="rounded border border-neutral-800 bg-neutral-950" {% if action_form.errors %}open{% endif %}>
-          <summary class="cursor-pointer px-4 py-3 text-sm font-semibold">3. Emitir o cancelar</summary>
+          <summary class="cursor-pointer px-4 py-3 text-sm font-semibold">3. Solicitar o aprobar</summary>
           <form class="grid gap-3 border-t border-neutral-800 p-4" method="post" action="{% url 'procurement:order_action' %}">
             {% csrf_token %}<input type="hidden" name="farm" value="{{ selected_farm.id }}">
             {% for field in action_form %}<label class="grid gap-1 text-xs text-neutral-400">{{ field.label }}{{ field }}{% for error in field.errors %}<span class="text-red-400">{{ error }}</span>{% endfor %}</label>{% endfor %}
             <button class="border border-sky-700 bg-sky-950 px-4 py-2 text-sm font-semibold text-sky-100" type="submit">Aplicar accion</button>
           </form>
         </details>
+        {% endif %}
 
+        {% if perms.procurement.receive_purchaseorder %}
         <details class="rounded border border-emerald-800 bg-emerald-950/30" {% if receipt_form.errors %}open{% endif %}>
           <summary class="cursor-pointer px-4 py-3 text-sm font-semibold text-emerald-200">4. Recibir en bodega</summary>
           <form class="grid gap-3 border-t border-emerald-900 p-4" method="post" action="{% url 'procurement:receipt_create' %}">
@@ -139,7 +174,42 @@
             <button class="bg-emerald-500 px-4 py-2 text-sm font-semibold text-neutral-950" type="submit">Registrar recepcion</button>
           </form>
         </details>
+        {% endif %}
 
+        {% if perms.procurement.manage_purchaseinvoice %}
+        <details class="rounded border border-neutral-800 bg-neutral-950" {% if invoice_form.errors %}open{% endif %}>
+          <summary class="cursor-pointer px-4 py-3 text-sm font-semibold">5. Registrar factura</summary>
+          <form class="grid gap-3 border-t border-neutral-800 p-4" method="post" action="{% url 'procurement:invoice_create' %}">
+            {% csrf_token %}<input type="hidden" name="farm" value="{{ selected_farm.id }}">
+            {% for field in invoice_form %}<label class="grid gap-1 text-xs text-neutral-400">{{ field.label }}{{ field }}{% for error in field.errors %}<span class="text-red-400">{{ error }}</span>{% endfor %}</label>{% endfor %}
+            <button class="border border-neutral-700 px-4 py-2 text-sm font-semibold" type="submit">Registrar cuenta por pagar</button>
+          </form>
+        </details>
+        {% endif %}
+
+        {% if perms.procurement.pay_purchaseinvoice %}
+        <details class="rounded border border-amber-800 bg-amber-950/30" {% if payment_form.errors %}open{% endif %}>
+          <summary class="cursor-pointer px-4 py-3 text-sm font-semibold text-amber-200">6. Registrar pago</summary>
+          <form class="grid gap-3 border-t border-amber-900 p-4" method="post" action="{% url 'procurement:payment_create' %}">
+            {% csrf_token %}<input type="hidden" name="farm" value="{{ selected_farm.id }}">
+            {% for field in payment_form %}<label class="grid gap-1 text-xs text-neutral-400">{{ field.label }}{{ field }}{% for error in field.errors %}<span class="text-red-400">{{ error }}</span>{% endfor %}</label>{% endfor %}
+            <button class="bg-amber-500 px-4 py-2 text-sm font-semibold text-neutral-950" type="submit">Aplicar pago</button>
+          </form>
+        </details>
+        {% endif %}
+
+        {% if perms.procurement.return_purchase %}
+        <details class="rounded border border-red-900 bg-red-950/20" {% if return_form.errors %}open{% endif %}>
+          <summary class="cursor-pointer px-4 py-3 text-sm font-semibold text-red-200">7. Devolver al proveedor</summary>
+          <form class="grid gap-3 border-t border-red-900 p-4" method="post" action="{% url 'procurement:return_create' %}">
+            {% csrf_token %}<input type="hidden" name="farm" value="{{ selected_farm.id }}">
+            {% for field in return_form %}<label class="grid gap-1 text-xs text-neutral-400">{{ field.label }}{{ field }}{% for error in field.errors %}<span class="text-red-400">{{ error }}</span>{% endfor %}</label>{% endfor %}
+            <button class="border border-red-700 px-4 py-2 text-sm font-semibold text-red-100" type="submit">Registrar devolucion</button>
+          </form>
+        </details>
+        {% endif %}
+
+        {% if perms.parties.add_counterparty or supplier_edit_id %}
         <details class="rounded border border-neutral-800 bg-neutral-950" {% if supplier_edit_id or supplier_form.errors %}open{% endif %}>
           <summary class="cursor-pointer px-4 py-3 text-sm font-semibold">{% if supplier_edit_id %}Editar contraparte{% else %}Nuevo proveedor{% endif %}</summary>
           <form class="grid gap-3 border-t border-neutral-800 p-4" method="post" action="{% if supplier_edit_id %}{% url 'procurement:supplier_update' supplier_edit_id %}{% else %}{% url 'procurement:supplier_create' %}{% endif %}">
@@ -150,6 +220,7 @@
             <button class="border border-neutral-700 px-4 py-2 text-sm font-semibold" type="submit">{% if supplier_edit_id %}Actualizar contraparte{% else %}Guardar proveedor{% endif %}</button>
           </form>
         </details>
+        {% endif %}
       </aside>
     </section>
   </section>

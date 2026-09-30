@@ -67,6 +67,7 @@ class InventoryMovement(TenantModel):
         IN = "in", "Ingreso"
         OUT = "out", "Consumo"
         ADJUSTMENT = "adjustment", "Ajuste"
+        RETURN = "return", "Devolucion a proveedor"
 
     farm = models.ForeignKey(Farm, on_delete=models.PROTECT, related_name="inventory_movements")
     input = models.ForeignKey(Input, on_delete=models.PROTECT, related_name="movements")

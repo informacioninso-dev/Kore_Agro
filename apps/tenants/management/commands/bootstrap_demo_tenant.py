@@ -14,6 +14,7 @@ from apps.configuration.models import (
 )
 from apps.grazing.models import GrazingPeriod, Paddock
 from apps.herd.models import Animal, Farm, HerdGroup
+from apps.identity.access import ensure_role_groups
 from apps.inventory.models import Input, StockLot
 from apps.parties.models import Counterparty
 from apps.procurement.models import PurchaseOrder, PurchaseOrderLine
@@ -67,6 +68,7 @@ class Command(BaseCommand):
             "growth",
             "grazing",
             "workforce",
+            "audit",
             "counterparties",
             "inventory",
             "procurement",
@@ -82,6 +84,7 @@ class Command(BaseCommand):
             )
 
         with tenant_context(tenant):
+            ensure_role_groups()
             farm, _ = Farm.objects.get_or_create(
                 code="HDK",
                 defaults={

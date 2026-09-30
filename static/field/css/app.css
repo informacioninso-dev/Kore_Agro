@@ -400,7 +400,7 @@ button {
 #healthPanel::before { content: "Registra el tratamiento para controlar el retiro de leche y el costo."; }
 #weightPanel::before { content: "Registra el peso para calcular la ganancia diaria y detectar animales rezagados."; }
 #inventoryPanel::before { content: "Registra lo que salió de bodega para que no falte ni se pierda."; }
-#receiptPanel::before { content: "Registra las compras cuando entran a bodega, con cantidad, costo y lote."; }
+#receiptPanel::before { content: "Recibe una orden aprobada. El precio y el saldo pendiente se validan al sincronizar."; }
 #adjustmentPanel::before { content: "Corrige la existencia después de un conteo físico e indica el motivo."; }
 #expensePanel::before { content: "Registra pagos operativos que no pasan por la bodega."; }
 #salePanel::before { content: "Registra el valor de la venta y retira el animal del inventario activo."; }
@@ -424,6 +424,12 @@ label {
 input,
 select {
   padding: 0 0.75rem;
+}
+
+.formHint {
+  margin: -0.2rem 0 0;
+  color: var(--muted);
+  font-size: 0.78rem;
 }
 
 input:disabled,

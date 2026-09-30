@@ -9,6 +9,7 @@ urlpatterns = [
     path("readiness/", health.readiness, name="readiness"),
     path("", include("apps.identity.urls")),
     path("admin/", admin.site.urls),
+    path("auditoria/", include("apps.audit.urls")),
     path("cumplimiento/", include("apps.billing.urls")),
     path("pastoreo/", include("apps.grazing.urls")),
     path("trabajo/", include("apps.workforce.urls")),

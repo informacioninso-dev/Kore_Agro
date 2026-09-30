@@ -87,7 +87,7 @@
           <button class="quickAction inventory" data-capability="inventory" data-open-panel="inventoryPanel" data-focus="#inventoryForm [name='input_id']" type="button">
             <span class="actionIcon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="m4 8 8-4 8 4-8 4-8-4Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M4 8v8l8 4 8-4V8M12 12v8" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></span><strong>Bodega</strong><small>Consumo de insumos</small>
           </button>
-          <button class="quickAction receipt" data-capability="inventory" data-open-panel="receiptPanel" data-focus="#receiptForm [name='input_id']" type="button">
+          <button class="quickAction receipt" data-capability="procurement" data-open-panel="receiptPanel" data-focus="#receiptForm [name='order_line_id']" type="button">
             <span class="actionIcon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M4 7h16v13H4V7Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M8 4h8l2 3H6l2-3Zm4 6v6m-3-3 3 3 3-3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span><strong>Compra</strong><small>Entrada de insumos</small>
           </button>
           <button class="quickAction adjustment" data-capability="inventory" data-open-panel="adjustmentPanel" data-focus="#adjustmentForm [name='input_id']" type="button">
@@ -116,7 +116,7 @@
         <button class="tab" data-capability="grazing" data-panel="grazingPanel" type="button"><span class="tabIcon" aria-hidden="true">↻</span>Rotacion</button>
         <button class="tab" data-capability="workforce" data-panel="taskPanel" type="button"><span class="tabIcon" aria-hidden="true">✓</span>Tareas</button>
         <button class="tab" data-capability="inventory" data-panel="inventoryPanel" type="button"><span class="tabIcon" aria-hidden="true">□</span>Consumo</button>
-        <button class="tab" data-capability="inventory" data-panel="receiptPanel" type="button"><span class="tabIcon" aria-hidden="true">↓</span>Compra</button>
+        <button class="tab" data-capability="procurement" data-panel="receiptPanel" type="button"><span class="tabIcon" aria-hidden="true">↓</span>Compra</button>
         <button class="tab" data-capability="inventory" data-panel="adjustmentPanel" type="button"><span class="tabIcon" aria-hidden="true">≋</span>Ajuste</button>
         <button class="tab" data-capability="finance" data-panel="expensePanel" type="button"><span class="tabIcon" aria-hidden="true">$</span>Gasto</button>
         <button class="tab" data-capability="finance" data-panel="salePanel" type="button"><span class="tabIcon" aria-hidden="true">◇</span>Venta</button>
@@ -248,15 +248,16 @@
         </form>
       </section>
 
-      <section id="receiptPanel" class="panel" data-capability="inventory">
+      <section id="receiptPanel" class="panel" data-capability="procurement">
         <form id="receiptForm" class="form">
-          <label>Insumo<select name="input_id" data-source="inputs" required></select></label>
+          <label>Orden e insumo<select name="order_line_id" data-source="purchase_lines" required></select></label>
+          <p id="purchaseLineHint" class="formHint"></p>
           <label>Cantidad recibida<input name="quantity" inputmode="decimal" type="number" step="0.001" min="0.001" required></label>
-          <label>Costo unitario<input name="unit_cost" inputmode="decimal" type="number" step="0.0001" min="0" placeholder="Usar costo habitual"></label>
           <label>Lote del proveedor<input name="lot_code" autocomplete="off"></label>
           <label>Fecha de vencimiento<input name="expires_on" type="date" data-no-default></label>
-          <label>Nota (opcional)<input name="notes" autocomplete="off" placeholder="Ej. factura o proveedor"></label>
-          <button class="primary" type="submit">Guardar compra</button>
+          <label>Factura o documento<input name="supplier_document" autocomplete="off"></label>
+          <label>Nota (opcional)<input name="notes" autocomplete="off" placeholder="Ej. novedad de entrega"></label>
+          <button class="primary" type="submit">Recibir en bodega</button>
         </form>
       </section>
 

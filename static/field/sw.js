@@ -1,4 +1,4 @@
-const CACHE_NAME = "kore-agro-field-v9";
+const CACHE_NAME = "kore-agro-field-v10";
 const APP_SHELL = [
   "/field/",
   "/field/manifest.webmanifest",

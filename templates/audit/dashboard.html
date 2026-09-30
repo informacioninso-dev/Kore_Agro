@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block title %}KORE Agro - Auditoria{% endblock %}
+
+{% block content %}
+  <section class="kore-page-heading">
+    <p class="eyebrow">Control interno</p>
+    <h1>Auditoria</h1>
+    <p>Historial inmutable de cambios, actores, rutas y eventos sincronizados.</p>
+  </section>
+
+  <section class="space-y-5">
+    <form method="get" class="grid gap-3 border-b border-neutral-800 pb-5 md:grid-cols-[1fr_1fr_1.5fr_auto]">
+      <label class="grid gap-1 text-xs uppercase text-neutral-500">Accion
+        <select name="action"><option value="">Todas</option><option value="create" {% if selected_action == 'create' %}selected{% endif %}>Creacion</option><option value="update" {% if selected_action == 'update' %}selected{% endif %}>Actualizacion</option><option value="delete" {% if selected_action == 'delete' %}selected{% endif %}>Eliminacion</option></select>
+      </label>
+      <label class="grid gap-1 text-xs uppercase text-neutral-500">Entidad
+        <select name="model"><option value="">Todas</option>{% for label in model_labels %}<option value="{{ label }}" {% if selected_model == label %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+      </label>
+      <label class="grid gap-1 text-xs uppercase text-neutral-500">Buscar
+        <input name="q" value="{{ query }}" placeholder="Registro o referencia">
+      </label>
+      <button class="self-end bg-emerald-500 px-4 py-2 text-sm font-semibold text-neutral-950" type="submit">Filtrar</button>
+    </form>
+
+    <section class="overflow-hidden rounded border border-neutral-800 bg-neutral-950">
+      <div class="overflow-x-auto">
+        <table class="w-full min-w-[960px] text-left text-sm">
+          <thead class="bg-neutral-900 text-xs uppercase text-neutral-500"><tr><th class="px-4 py-3">Fecha</th><th>Actor</th><th>Accion</th><th>Entidad</th><th>Registro</th><th>Origen</th><th>Cambios</th></tr></thead>
+          <tbody class="divide-y divide-neutral-800">
+            {% for event in events %}
+              <tr><td class="px-4 py-3 whitespace-nowrap">{{ event.created_at|date:"d/m/Y H:i:s" }}</td><td>{{ event.actor_username|default:"Sistema" }}</td><td>{{ event.get_action_display }}</td><td><code>{{ event.model_label }}</code></td><td>{{ event.object_repr }}<br><span class="text-xs text-neutral-600">{{ event.object_id }}</span></td><td>{% if event.source_event_id %}<span class="text-emerald-400">Offline</span>{% else %}{{ event.request_method|default:"Proceso" }} {{ event.request_path }}{% endif %}</td><td><details><summary class="cursor-pointer text-emerald-400">Ver detalle</summary><pre class="mt-2 max-w-lg overflow-auto whitespace-pre-wrap text-xs text-neutral-400">{{ event.changes }}</pre></details></td></tr>
+            {% empty %}<tr><td class="px-4 py-8 text-center text-neutral-500" colspan="7">No hay eventos para estos filtros.</td></tr>{% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </section>
+{% endblock %}

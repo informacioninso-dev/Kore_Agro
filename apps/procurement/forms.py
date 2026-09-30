@@ -8,7 +8,13 @@ from apps.herd.models import Farm
 from apps.inventory.models import Input
 from apps.parties.models import Counterparty
 
-from .models import PurchaseOrder, PurchaseOrderLine
+from .models import (
+    GoodsReceiptLine,
+    PurchaseInvoice,
+    PurchaseOrder,
+    PurchaseOrderLine,
+    PurchasePayment,
+)
 
 
 class ProcurementFormMixin:
@@ -148,28 +154,57 @@ class PurchaseLineForm(ProcurementFormMixin, forms.Form):
 
 class PurchaseOrderActionForm(ProcurementFormMixin, forms.Form):
     class Action:
-        PLACE = "place"
+        SUBMIT = "submit"
+        APPROVE = "approve"
+        REJECT = "reject"
         CANCEL = "cancel"
 
     purchase_order = forms.ModelChoiceField(
         queryset=PurchaseOrder.objects.none(),
         label="Orden",
     )
-    action = forms.ChoiceField(
-        label="Accion",
-        choices=((Action.PLACE, "Emitir orden"), (Action.CANCEL, "Cancelar orden")),
-    )
+    action = forms.ChoiceField(label="Accion", choices=())
+    rejection_reason = forms.CharField(label="Motivo del rechazo", max_length=255, required=False)
 
-    def __init__(self, *args, farm=None, **kwargs):
+    def __init__(self, *args, farm=None, user=None, **kwargs):
         super().__init__(*args, **kwargs)
+        choices = []
+        statuses = set()
+        if user and user.has_perm("procurement.submit_purchaseorder"):
+            choices.append((self.Action.SUBMIT, "Enviar para aprobacion"))
+            statuses.add(PurchaseOrder.Status.DRAFT)
+        if user and user.has_perm("procurement.approve_purchaseorder"):
+            choices.extend(
+                (
+                    (self.Action.APPROVE, "Aprobar y emitir"),
+                    (self.Action.REJECT, "Rechazar"),
+                )
+            )
+            statuses.add(PurchaseOrder.Status.PENDING_APPROVAL)
+        if user and user.has_perm("procurement.change_purchaseorder"):
+            choices.append((self.Action.CANCEL, "Cancelar orden"))
+            statuses.update(
+                {
+                    PurchaseOrder.Status.DRAFT,
+                    PurchaseOrder.Status.PENDING_APPROVAL,
+                    PurchaseOrder.Status.ORDERED,
+                }
+            )
+        self.fields["action"].choices = choices
         if farm:
             self.fields["purchase_order"].queryset = PurchaseOrder.objects.filter(
                 farm=farm,
-                status__in=(
-                    PurchaseOrder.Status.DRAFT,
-                    PurchaseOrder.Status.ORDERED,
-                ),
+                status__in=statuses,
             ).select_related("supplier")
+
+    def clean(self):
+        data = super().clean()
+        rejecting_without_reason = data.get("action") == self.Action.REJECT and not data.get(
+            "rejection_reason", ""
+        ).strip()
+        if rejecting_without_reason:
+            self.add_error("rejection_reason", "Indica el motivo del rechazo.")
+        return data
 
 
 class PurchaseReceiptForm(ProcurementFormMixin, forms.Form):
@@ -219,3 +254,96 @@ class PurchaseReceiptForm(ProcurementFormMixin, forms.Form):
                 .select_related("purchase_order__supplier", "input")
                 .order_by("purchase_order__ordered_on", "created_at")
             )
+
+
+class PurchaseInvoiceForm(ProcurementFormMixin, forms.Form):
+    purchase_order = forms.ModelChoiceField(
+        queryset=PurchaseOrder.objects.none(),
+        label="Orden recibida",
+    )
+    invoice_number = forms.CharField(label="Numero de factura", max_length=80)
+    issued_on = forms.DateField(
+        label="Fecha de emision",
+        widget=forms.DateInput(attrs={"type": "date"}),
+    )
+    due_on = forms.DateField(
+        label="Fecha de vencimiento",
+        widget=forms.DateInput(attrs={"type": "date"}),
+    )
+    notes = forms.CharField(label="Notas", max_length=255, required=False)
+
+    def __init__(self, *args, farm=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if not self.is_bound:
+            self.fields["issued_on"].initial = timezone.localdate()
+        if farm:
+            self.fields["purchase_order"].queryset = PurchaseOrder.objects.filter(
+                farm=farm,
+                status=PurchaseOrder.Status.RECEIVED,
+                invoice__isnull=True,
+            ).select_related("supplier")
+
+
+class PurchasePaymentForm(ProcurementFormMixin, forms.Form):
+    invoice = forms.ModelChoiceField(queryset=PurchaseInvoice.objects.none(), label="Factura")
+    amount = forms.DecimalField(
+        label="Valor pagado",
+        max_digits=16,
+        decimal_places=4,
+        min_value=Decimal("0.0001"),
+        widget=forms.NumberInput(attrs={"step": "0.01", "min": "0.01"}),
+    )
+    paid_on = forms.DateField(
+        label="Fecha de pago",
+        widget=forms.DateInput(attrs={"type": "date"}),
+    )
+    method = forms.ChoiceField(label="Forma de pago", choices=PurchasePayment.Method.choices)
+    reference = forms.CharField(label="Referencia", max_length=100, required=False)
+    notes = forms.CharField(label="Notas", max_length=255, required=False)
+
+    def __init__(self, *args, farm=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if not self.is_bound:
+            self.fields["paid_on"].initial = timezone.localdate()
+        if farm:
+            self.fields["invoice"].queryset = PurchaseInvoice.objects.filter(
+                purchase_order__farm=farm,
+                status__in=(PurchaseInvoice.Status.PENDING, PurchaseInvoice.Status.PARTIAL),
+            ).select_related("purchase_order__supplier")
+
+
+class PurchaseReturnForm(ProcurementFormMixin, forms.Form):
+    receipt_line = forms.ModelChoiceField(
+        queryset=GoodsReceiptLine.objects.none(),
+        label="Recepcion",
+    )
+    quantity = forms.DecimalField(
+        label="Cantidad a devolver",
+        max_digits=14,
+        decimal_places=3,
+        min_value=Decimal("0.001"),
+        widget=forms.NumberInput(attrs={"step": "0.001", "min": "0.001"}),
+    )
+    returned_at = forms.DateTimeField(
+        label="Fecha y hora",
+        input_formats=["%Y-%m-%dT%H:%M"],
+        widget=forms.DateTimeInput(attrs={"type": "datetime-local"}),
+    )
+    reason = forms.CharField(label="Motivo", max_length=255)
+    credit_document = forms.CharField(
+        label="Nota de credito",
+        max_length=80,
+        required=False,
+    )
+
+    def __init__(self, *args, farm=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if not self.is_bound:
+            self.fields["returned_at"].initial = timezone.localtime().strftime(
+                "%Y-%m-%dT%H:%M"
+            )
+        if farm:
+            self.fields["receipt_line"].queryset = GoodsReceiptLine.objects.filter(
+                receipt__purchase_order__farm=farm,
+                inventory_movement__stock_lot__quantity_on_hand__gt=0,
+            ).select_related("receipt__purchase_order", "order_line__input")

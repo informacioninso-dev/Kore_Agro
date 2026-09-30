@@ -277,7 +277,7 @@ apps/
 | Area | Estado actual |
 | --- | --- |
 | Multi-tenancy por schema | Implementado |
-| Roles, acceso administrativo y asignacion de trabajador a hacienda | Implementado |
+| Roles, permisos por accion y asignacion de trabajador a hacienda | Implementado; compras separa solicitar, aprobar, recibir, facturar, pagar y devolver |
 | Hato, lotes y fincas | Implementado en alcance ganadero inicial |
 | Ordeño, reproduccion, sanidad y retiro de leche | Implementado |
 | Pesajes, ganancia diaria, proyeccion e historial del animal | Implementado |
@@ -285,13 +285,14 @@ apps/
 | Personal, tareas, jornadas y costo de mano de obra | Implementado en alcance operativo inicial |
 | Inventario, recepcion de insumos, consumos, ajustes y kardex | Implementado |
 | P&L por hacienda, lote y animal | Implementado |
-| PWA offline, cola FIFO, idempotencia y conflictos | Implementado |
+| PWA offline, cola FIFO, idempotencia y conflictos | Implementado; recepciones ligadas a orden aprobada |
 | Panel superadmin, perfiles y registro de capacidades | Implementado en esquema publico |
 | Menus, rutas, API y PWA gobernados por capacidades | Implementado |
+| Auditoria transversal de actor, cambios, ruta y evento offline | Implementado |
 | Productores y contrapartes compartidas | Base implementada; validada inicialmente con proveedores |
 | Recepcion agroproductiva, calidad, lotes y liquidaciones | Por construir |
 | Procesamiento, despacho y comercializacion general | Por construir |
-| Proveedores, ordenes, recepciones e ingreso a inventario | Implementado en alcance operativo inicial |
+| Proveedores, aprobaciones, recepciones, facturas, pagos y devoluciones | Implementado |
 
 ### Panel Superadmin
 
@@ -351,10 +352,10 @@ El orden recomendado protege el producto actual y evita duplicar dominios al abr
 nuevas cadenas:
 
 1. **Infraestructura de control:** panel superadmin, perfiles, capacidades,
-   aprovisionamiento de tenants y aplicacion contextual implementados como base;
-   continuar con auditoria de cambios y observabilidad operativa.
+   aprovisionamiento, permisos por accion y auditoria transversal implementados;
+   continuar con observabilidad operativa.
 2. **Consolidar Ganaderia:** pesajes, historial, potreros, rotacion, personal, tareas,
-   proveedores y compras operativas implementados; continuar con auditoria transversal.
+   proveedores, aprobaciones, cuentas por pagar y compras offline implementados.
 3. **Construir el nucleo agroproductivo compartido:** contrapartes, catalogo,
    recepcion, pesaje, calidad, lotes, trazabilidad, liquidaciones y despacho.
 4. **Activar Centro de Acopio:** primer perfil que pruebe el flujo compartido completo,
@@ -648,7 +649,11 @@ Estado actual:
 - Vision de plataforma definida: una marca, perfiles combinables, capacidades
   contratables y motores agroproductivos compartidos.
 - Panel superadmin aplicado en el esquema publico con aprovisionamiento de tenants.
-- Compras aplicado: contrapartes, ordenes, recepcion parcial e ingreso trazable a bodega.
+- Compras aplicado: contrapartes, aprobacion, recepcion parcial online/offline, facturas,
+  pagos, devoluciones e ingreso trazable a bodega.
+- Auditoria aplicada: actor, entidad, cambios, ruta, IP y evento offline por tenant.
+- Permisos aplicados: propietario aprueba y paga; administrador solicita, recibe y factura;
+  trabajador de campo recibe ordenes autorizadas desde la PWA.
 
 ## Eventos Con Impacto Economico
 
@@ -662,6 +667,7 @@ Todos son idempotentes por `event_id` y quedan trazados en `/finanzas/`.
 | `health.treatment_recorded` | Tratamiento y retiro de leche | Consumo de insumo y costo |
 | `inventory.input_consumed` | Descuenta stock FIFO | Costo por categoria de insumo |
 | `inventory.input_received` | Ingresa stock y repondera costo | Ninguno: el costo llega al consumir |
+| `procurement.purchase_received` | Recibe saldo de una orden aprobada | Activa inventario y conserva la cuenta por pagar |
 | `inventory.stock_adjusted` | Corrige conteo fisico | Faltante = merma; sobrante = solo stock |
 | `finance.expense_recorded` | Ninguno | Mano de obra, servicios y fletes |
 | `herd.animal_sold` | Marca el animal como vendido | Ingreso por venta de animal |
