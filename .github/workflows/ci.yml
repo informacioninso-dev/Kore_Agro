@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: kore_agro
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d kore_agro"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+
+    env:
+      DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/kore_agro
+      REDIS_URL: redis://127.0.0.1:6379/0
+      SECRET_KEY: ci-only-secret-key
+      ALLOWED_HOSTS: localhost,127.0.0.1
+      CSRF_TRUSTED_ORIGINS: http://localhost
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install Poetry
+        run: pip install poetry==2.2.1
+      - name: Install dependencies
+        run: poetry install --no-interaction
+      - name: Lint
+        run: poetry run ruff check apps config manage.py tests
+      - name: Django checks
+        run: |
+          poetry run python manage.py check
+          poetry run python manage.py makemigrations --check --dry-run
+      - name: Production security checks
+        env:
+          DJANGO_SETTINGS_MODULE: config.settings.production
+          SECRET_KEY: ci-production-check-secret-key
+          ALLOWED_HOSTS: kore.example.com
+          CSRF_TRUSTED_ORIGINS: https://kore.example.com
+        run: poetry run python manage.py check --deploy
+      - name: Validate production Compose
+        env:
+          KORE_ENV_FILE: .env.production.example
+        run: |
+          docker compose --env-file .env.production.example -f docker-compose.production.yml config --quiet
+          bash -n scripts/backup_database.sh scripts/restore_database.sh scripts/smoke_test.sh
+      - name: Tests
+        run: poetry run pytest -q
+      - name: Build production image
+        run: docker build --tag kore-agro:${{ github.sha }} .

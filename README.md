@@ -611,6 +611,11 @@ URLs locales:
 4. Programar backups externos de `postgres_data`; el volumen local no sustituye una copia
    recuperable fuera del servidor.
 
+La guia completa de primer despliegue, actualizaciones, backups, restauracion y monitoreo
+esta en [`docs/OPERACION_PRODUCCION.md`](docs/OPERACION_PRODUCCION.md). El repositorio incluye
+scripts con verificacion de integridad para backup/restauracion y un smoke test para validar
+la aplicacion despues de cada despliegue.
+
 Validaciones:
 
 ```powershell
