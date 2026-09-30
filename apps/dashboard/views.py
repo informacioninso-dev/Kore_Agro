@@ -2,13 +2,19 @@ from datetime import timedelta
 from decimal import Decimal, InvalidOperation
 from typing import NamedTuple
 
+from django.contrib import messages
+from django.contrib.auth import get_user_model
+from django.db import transaction
 from django.db.models import QuerySet
 from django.http import HttpRequest, HttpResponse
-from django.shortcuts import get_object_or_404, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.utils.dateparse import parse_date
 from django.views.decorators.http import require_POST
+from django_tenants.utils import tenant_context
 
+from apps.audit.models import AuditEvent
+from apps.audit.services import record_audit_event
 from apps.configuration.access import request_capability_codes
 from apps.finance.models import CostAllocation, RevenueEntry
 from apps.finance.services import (
@@ -34,6 +40,7 @@ from apps.growth.services import (
 from apps.health.models import Treatment
 from apps.health.services import active_milk_withdrawals, open_treatments
 from apps.herd.models import Animal, Farm, HerdGroup
+from apps.identity.access import ROLE_LABELS, ROLE_OWNER, user_has_any_role
 from apps.inventory.models import Input, InventoryMovement, StockLot
 from apps.inventory.services import adjust_stock, receive_input
 from apps.milk.models import MilkYield
@@ -44,12 +51,15 @@ from .forms import (
     AnimalForm,
     AnimalSaleForm,
     FarmForm,
+    FarmSettingsForm,
     HerdGroupForm,
     InputForm,
     InputReceiptForm,
     OperatingExpenseForm,
+    OrganizationSettingsForm,
     StockAdjustmentForm,
     StockLotForm,
+    TenantUserForm,
     WeightRecordForm,
 )
 
@@ -73,6 +83,226 @@ STOCK_SPEC = CrudSpec(
     "stock_lot_edit_id",
     "Stock guardado.",
 )
+
+
+def _user_role(user) -> str:
+    return user.groups.filter(name__in=ROLE_LABELS).values_list("name", flat=True).first() or ""
+
+
+def _user_snapshot(user) -> dict:
+    assignment = getattr(user, "field_assignment", None)
+    return {
+        "username": user.username,
+        "first_name": user.first_name,
+        "last_name": user.last_name,
+        "email": user.email,
+        "role": _user_role(user),
+        "farm_id": str(assignment.farm_id) if assignment and assignment.is_active else None,
+        "is_active": user.is_active,
+    }
+
+
+def _audit_changes(before: dict | None, after: dict) -> dict:
+    if before is None:
+        return {"snapshot": after}
+    return {
+        field: {"from": before.get(field), "to": value}
+        for field, value in after.items()
+        if before.get(field) != value
+    }
+
+
+def _tenant_settings_context(request: HttpRequest, overrides: dict | None = None) -> dict:
+    can_manage_users = user_has_any_role(request.user, (ROLE_OWNER,))
+    editing_user = None
+    if can_manage_users and request.GET.get("usuario"):
+        try:
+            editing_user = (
+                get_user_model()
+                .objects.filter(pk=request.GET["usuario"], is_superuser=False)
+                .first()
+            )
+        except (TypeError, ValueError):
+            editing_user = None
+
+    farms = list(Farm.objects.filter(is_active=True).order_by("name"))
+    farm_forms = [
+        {
+            "farm": farm,
+            "form": FarmSettingsForm(instance=farm, prefix=str(farm.id)),
+        }
+        for farm in farms
+    ]
+    users = []
+    if can_manage_users:
+        users = list(
+            get_user_model()
+            .objects.filter(is_superuser=False)
+            .prefetch_related("groups")
+            .select_related("field_assignment__farm")
+            .order_by("username")
+        )
+    user_rows = [
+        {
+            "user": user,
+            "role": ROLE_LABELS.get(_user_role(user), "Sin rol"),
+            "assignment": getattr(user, "field_assignment", None),
+        }
+        for user in users
+    ]
+    context = {
+        "organization": request.tenant,
+        "organization_form": (
+            OrganizationSettingsForm(instance=request.tenant, prefix="organization")
+            if can_manage_users
+            else None
+        ),
+        "farm_forms": farm_forms,
+        "user_rows": user_rows,
+        "user_form": (
+            TenantUserForm(user_instance=editing_user, prefix="user")
+            if can_manage_users
+            else None
+        ),
+        "editing_user": editing_user,
+        "can_manage_users": can_manage_users,
+        "profiles": request.tenant.profile_assignments.filter(is_active=True).select_related(
+            "profile"
+        ),
+        "capabilities": request.tenant.capability_assignments.select_related(
+            "capability"
+        ).order_by("capability__category", "capability__sort_order"),
+    }
+    if overrides:
+        context.update(overrides)
+        if "farm_form_override" in overrides:
+            invalid_farm, invalid_form = overrides["farm_form_override"]
+            for row in context["farm_forms"]:
+                if row["farm"].pk == invalid_farm.pk:
+                    row["form"] = invalid_form
+                    break
+    return context
+
+
+def tenant_settings(request: HttpRequest) -> HttpResponse:
+    return render(request, "dashboard/settings.html", _tenant_settings_context(request))
+
+
+@require_POST
+def organization_settings_update(request: HttpRequest) -> HttpResponse:
+    organization = request.tenant
+    tracked_fields = OrganizationSettingsForm.Meta.fields
+    before = {field: getattr(organization, field) for field in tracked_fields}
+    form = OrganizationSettingsForm(
+        request.POST,
+        instance=organization,
+        prefix="organization",
+    )
+    if not form.is_valid():
+        return render(
+            request,
+            "dashboard/settings.html",
+            _tenant_settings_context(request, {"organization_form": form}),
+            status=422,
+        )
+
+    with transaction.atomic():
+        organization = form.save()
+        changes = _audit_changes(
+            before,
+            {field: getattr(organization, field) for field in tracked_fields},
+        )
+        if changes:
+            with tenant_context(organization):
+                record_audit_event(
+                    action=AuditEvent.Action.UPDATE,
+                    model_label="tenants.client",
+                    object_id=str(organization.pk),
+                    object_repr=organization.name,
+                    changes=changes,
+                )
+    messages.success(request, "Datos de la organizacion actualizados.")
+    return redirect("dashboard:tenant_settings")
+
+
+@require_POST
+def farm_settings_update(request: HttpRequest, pk) -> HttpResponse:
+    farm = get_object_or_404(Farm, pk=pk, is_active=True)
+    form = FarmSettingsForm(request.POST, instance=farm, prefix=str(farm.id))
+    if not form.is_valid():
+        return render(
+            request,
+            "dashboard/settings.html",
+            _tenant_settings_context(request, {"farm_form_override": (farm, form)}),
+            status=422,
+        )
+    form.save()
+    messages.success(request, f"Configuracion de {farm.name} actualizada.")
+    return redirect("dashboard:tenant_settings")
+
+
+@require_POST
+def tenant_user_create(request: HttpRequest) -> HttpResponse:
+    form = TenantUserForm(request.POST, prefix="user")
+    if not form.is_valid():
+        return render(
+            request,
+            "dashboard/settings.html",
+            _tenant_settings_context(request, {"user_form": form}),
+            status=422,
+        )
+
+    with transaction.atomic():
+        user = form.save()
+        snapshot = _user_snapshot(user)
+        record_audit_event(
+            action=AuditEvent.Action.CREATE,
+            model_label="auth.user",
+            object_id=str(user.pk),
+            object_repr=user.username,
+            changes={"snapshot": snapshot},
+        )
+    messages.success(request, f"Usuario {user.username} creado.")
+    return redirect("dashboard:tenant_settings")
+
+
+@require_POST
+def tenant_user_update(request: HttpRequest, pk: int) -> HttpResponse:
+    user = get_object_or_404(get_user_model(), pk=pk, is_superuser=False)
+    form = TenantUserForm(request.POST, user_instance=user, prefix="user")
+    if form.is_valid() and user.pk == request.user.pk:
+        if not form.cleaned_data["is_active"]:
+            form.add_error("is_active", "No puedes desactivar tu propio usuario.")
+        if form.cleaned_data["role"] != ROLE_OWNER:
+            form.add_error("role", "No puedes quitarte el rol de propietario.")
+    if not form.is_valid():
+        return render(
+            request,
+            "dashboard/settings.html",
+            _tenant_settings_context(
+                request,
+                {"user_form": form, "editing_user": user},
+            ),
+            status=422,
+        )
+
+    before = _user_snapshot(user)
+    password_changed = bool(form.cleaned_data["password"])
+    with transaction.atomic():
+        user = form.save()
+        changes = _audit_changes(before, _user_snapshot(user))
+        if password_changed:
+            changes["password_changed"] = {"from": False, "to": True}
+        if changes:
+            record_audit_event(
+                action=AuditEvent.Action.UPDATE,
+                model_label="auth.user",
+                object_id=str(user.pk),
+                object_repr=user.username,
+                changes=changes,
+            )
+    messages.success(request, f"Usuario {user.username} actualizado.")
+    return redirect("dashboard:tenant_settings")
 
 
 def _date_range(request):

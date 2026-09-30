@@ -1,11 +1,17 @@
 from decimal import Decimal
 
 from django import forms
+from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Group
+from django.contrib.auth.password_validation import validate_password
 
 from apps.finance.models import CostAllocation
 from apps.growth.models import WeightRecord
 from apps.herd.models import Animal, Farm, HerdGroup
+from apps.identity.access import ROLE_FIELD_WORKER, ROLE_LABELS
+from apps.identity.models import FieldAssignment
 from apps.inventory.models import Input, StockLot
+from apps.tenants.models import Client
 
 DIRECT_EXPENSE_CHOICES = [
     (value, label)
@@ -72,6 +78,130 @@ class FarmForm(DarkModeModelForm):
             "default_milk_price": "Precio leche",
             "is_active": "Activa",
         }
+
+
+class OrganizationSettingsForm(DarkModeModelForm):
+    class Meta:
+        model = Client
+        fields = ["name", "legal_name", "ruc", "province", "city"]
+        labels = {
+            "name": "Nombre comercial",
+            "legal_name": "Razon social",
+            "ruc": "RUC",
+            "province": "Provincia",
+            "city": "Ciudad",
+        }
+
+
+class FarmSettingsForm(DarkModeModelForm):
+    class Meta:
+        model = Farm
+        fields = ["name", "code", "province", "canton", "parish", "default_milk_price"]
+        widgets = {
+            "default_milk_price": forms.NumberInput(attrs={"step": "0.0001", "min": "0"}),
+        }
+        labels = {
+            "name": "Nombre",
+            "code": "Codigo",
+            "province": "Provincia",
+            "canton": "Canton",
+            "parish": "Parroquia",
+            "default_milk_price": "Precio de leche",
+        }
+
+
+class TenantUserForm(DarkModeForm):
+    username = forms.CharField(label="Usuario", max_length=150)
+    first_name = forms.CharField(label="Nombres", max_length=150, required=False)
+    last_name = forms.CharField(label="Apellidos", max_length=150, required=False)
+    email = forms.EmailField(label="Correo", required=False)
+    role = forms.ChoiceField(label="Rol", choices=tuple(ROLE_LABELS.items()))
+    farm = forms.ModelChoiceField(
+        label="Hacienda asignada",
+        queryset=Farm.objects.none(),
+        required=False,
+    )
+    password = forms.CharField(
+        label="Contrasena",
+        required=False,
+        widget=forms.PasswordInput(attrs={"autocomplete": "new-password"}),
+    )
+    is_active = forms.BooleanField(label="Usuario activo", required=False, initial=True)
+
+    def __init__(self, *args, user_instance=None, **kwargs):
+        self.user_instance = user_instance
+        super().__init__(*args, **kwargs)
+        self.fields["farm"].queryset = _active_farms()
+        if user_instance and not self.is_bound:
+            assignment = getattr(user_instance, "field_assignment", None)
+            role = (
+                user_instance.groups.filter(name__in=ROLE_LABELS)
+                .values_list("name", flat=True)
+                .first()
+            )
+            self.initial.update(
+                {
+                    "username": user_instance.username,
+                    "first_name": user_instance.first_name,
+                    "last_name": user_instance.last_name,
+                    "email": user_instance.email,
+                    "role": role,
+                    "farm": assignment.farm_id if assignment and assignment.is_active else None,
+                    "is_active": user_instance.is_active,
+                }
+            )
+
+    def clean_username(self):
+        username = self.cleaned_data["username"].strip()
+        users = get_user_model().objects.filter(username__iexact=username)
+        if self.user_instance:
+            users = users.exclude(pk=self.user_instance.pk)
+        if users.exists():
+            raise forms.ValidationError("Ya existe un usuario con ese nombre.")
+        return username
+
+    def clean_password(self):
+        password = self.cleaned_data.get("password", "")
+        if not self.user_instance and not password:
+            raise forms.ValidationError("Define una contrasena para el usuario.")
+        if password:
+            candidate = self.user_instance or get_user_model()(
+                username=self.cleaned_data.get("username", ""),
+                email=self.cleaned_data.get("email", ""),
+            )
+            validate_password(password, candidate)
+        return password
+
+    def clean(self):
+        cleaned = super().clean()
+        if cleaned.get("role") == ROLE_FIELD_WORKER and not cleaned.get("farm"):
+            self.add_error("farm", "Selecciona la hacienda del mayordomo.")
+        return cleaned
+
+    def save(self):
+        data = self.cleaned_data
+        user = self.user_instance or get_user_model()()
+        user.username = data["username"]
+        user.first_name = data["first_name"]
+        user.last_name = data["last_name"]
+        user.email = data["email"]
+        user.is_active = data["is_active"]
+        if data["password"]:
+            user.set_password(data["password"])
+        user.save()
+
+        role_groups = Group.objects.filter(name__in=ROLE_LABELS)
+        user.groups.remove(*role_groups)
+        user.groups.add(Group.objects.get(name=data["role"]))
+
+        if data["role"] == ROLE_FIELD_WORKER:
+            FieldAssignment.objects.update_or_create(
+                user=user,
+                defaults={"farm": data["farm"], "is_active": True},
+            )
+        else:
+            FieldAssignment.objects.filter(user=user).delete()
+        return user
 
 
 class HerdGroupForm(DarkModeModelForm):

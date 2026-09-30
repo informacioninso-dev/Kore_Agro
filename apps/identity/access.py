@@ -17,8 +17,16 @@ ROLE_LABELS = {
 
 ROLE_PERMISSIONS = {
     ROLE_OWNER: {
+        "auth.add_user",
+        "auth.change_user",
+        "auth.view_user",
         "audit.view_auditevent",
         "audit.export_audit",
+        "herd.change_farm",
+        "herd.view_farm",
+        "identity.add_fieldassignment",
+        "identity.change_fieldassignment",
+        "identity.view_fieldassignment",
         "parties.add_counterparty",
         "parties.change_counterparty",
         "parties.view_counterparty",
@@ -34,6 +42,8 @@ ROLE_PERMISSIONS = {
     },
     ROLE_MANAGER: {
         "audit.view_auditevent",
+        "herd.change_farm",
+        "herd.view_farm",
         "parties.add_counterparty",
         "parties.change_counterparty",
         "parties.view_counterparty",
@@ -79,6 +89,13 @@ def management_required(view):
 def field_access_required(view):
     return user_passes_test(
         lambda user: user_has_any_role(user, FIELD_ROLES),
+        login_url="identity:login",
+    )(view)
+
+
+def owner_required(view):
+    return user_passes_test(
+        lambda user: user_has_any_role(user, (ROLE_OWNER,)),
         login_url="identity:login",
     )(view)
 

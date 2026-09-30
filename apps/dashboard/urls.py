@@ -1,7 +1,7 @@
 from django.urls import path
 
 from apps.configuration.access import capability_required
-from apps.identity.access import management_required
+from apps.identity.access import management_required, owner_required, tenant_permission_required
 
 from . import views
 
@@ -17,6 +17,31 @@ def management_capability(*codes: str, match_any: bool = False):
 
 urlpatterns = [
     path("", management_required(views.home), name="home"),
+    path(
+        "configuracion/",
+        management_required(views.tenant_settings),
+        name="tenant_settings",
+    ),
+    path(
+        "configuracion/organizacion/",
+        owner_required(views.organization_settings_update),
+        name="organization_settings_update",
+    ),
+    path(
+        "configuracion/haciendas/<uuid:pk>/",
+        tenant_permission_required("herd.change_farm")(views.farm_settings_update),
+        name="farm_settings_update",
+    ),
+    path(
+        "configuracion/usuarios/crear/",
+        owner_required(views.tenant_user_create),
+        name="tenant_user_create",
+    ),
+    path(
+        "configuracion/usuarios/<int:pk>/",
+        owner_required(views.tenant_user_update),
+        name="tenant_user_update",
+    ),
     path("pnl/", management_capability("finance")(views.pnl_fragment), name="pnl_fragment"),
     path(
         "actions/",

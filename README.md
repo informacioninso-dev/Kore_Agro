@@ -277,7 +277,7 @@ apps/
 | Area | Estado actual |
 | --- | --- |
 | Multi-tenancy por schema | Implementado |
-| Roles, permisos por accion y asignacion de trabajador a hacienda | Implementado; compras separa solicitar, aprobar, recibir, facturar, pagar y devolver |
+| Roles, permisos por accion y asignacion de trabajador a hacienda | Implementado; configuracion del tenant en autoservicio y compras separadas por accion |
 | Hato, lotes y fincas | Implementado en alcance ganadero inicial |
 | Ordeño, reproduccion, sanidad y retiro de leche | Implementado |
 | Pesajes, ganancia diaria, proyeccion e historial del animal | Implementado |
@@ -659,6 +659,8 @@ Estado actual:
 - Auditoria aplicada: actor, entidad, cambios, ruta, IP y evento offline por tenant.
 - Permisos aplicados: propietario aprueba y paga; administrador solicita, recibe y factura;
   trabajador de campo recibe ordenes autorizadas desde la PWA.
+- Configuracion autoservicio aplicada: el propietario mantiene organizacion, usuarios, roles
+  y asignaciones; el administrador actualiza los parametros operativos de la hacienda.
 
 ## Eventos Con Impacto Economico
 

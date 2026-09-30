@@ -7,8 +7,8 @@ from django.dispatch import receiver
 
 from apps.common.models import TenantModel
 
-from .context import get_audit_context
 from .models import AuditEvent
+from .services import record_audit_event
 
 IGNORED_FIELDS = {
     "created_at",
@@ -53,20 +53,13 @@ def _safe_repr(instance) -> str:
 
 
 def _record(instance, action: str, changes: dict) -> None:
-    context = get_audit_context()
-    source_event_id = getattr(instance, "source_event_id", None)
-    AuditEvent.objects.create(
+    record_audit_event(
         action=action,
         model_label=instance._meta.label_lower,
         object_id=str(instance.pk),
         object_repr=_safe_repr(instance),
         changes=changes,
-        actor_id=context.actor_id,
-        actor_username=context.actor_username,
-        request_method=context.request_method,
-        request_path=context.request_path,
-        ip_address=context.ip_address,
-        source_event_id=source_event_id,
+        source_event_id=getattr(instance, "source_event_id", None),
     )
 
 

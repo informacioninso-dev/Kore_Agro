@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+
+{% block title %}KORE AGRO - Configuracion{% endblock %}
+
+{% block content %}
+  <section class="kore-page-heading">
+    <p class="eyebrow">Administracion de la organizacion</p>
+    <h1>Configuracion</h1>
+    <p>Datos generales, parametros de las haciendas y acceso del equipo.</p>
+  </section>
+
+  {% for message in messages %}
+    <div class="mb-4 rounded border border-emerald-800 bg-emerald-950 px-4 py-3 text-sm text-emerald-100">
+      {{ message }}
+    </div>
+  {% endfor %}
+
+  <section class="mb-6 grid gap-4 xl:grid-cols-2">
+    <article class="rounded border border-neutral-800 bg-neutral-900">
+      <header class="border-b border-neutral-800 px-4 py-3">
+        <h2 class="font-semibold">Organizacion</h2>
+      </header>
+      {% if can_manage_users %}
+        <form class="grid gap-3 p-4 md:grid-cols-2" method="post" action="{% url 'dashboard:organization_settings_update' %}">
+          {% csrf_token %}
+          {% include "dashboard/_form_fields.html" with form=organization_form %}
+          <div class="md:col-span-2">
+            <button class="rounded bg-emerald-500 px-4 py-2 text-sm font-semibold text-neutral-950 hover:bg-emerald-400" type="submit">Guardar organizacion</button>
+          </div>
+        </form>
+      {% else %}
+        <dl class="grid gap-3 p-4 text-sm md:grid-cols-2">
+          <div><dt class="text-xs uppercase text-neutral-500">Nombre</dt><dd>{{ organization.name }}</dd></div>
+          <div><dt class="text-xs uppercase text-neutral-500">Razon social</dt><dd>{{ organization.legal_name|default:"-" }}</dd></div>
+          <div><dt class="text-xs uppercase text-neutral-500">RUC</dt><dd>{{ organization.ruc|default:"-" }}</dd></div>
+          <div><dt class="text-xs uppercase text-neutral-500">Ubicacion</dt><dd>{{ organization.city|default:"-" }}, {{ organization.province|default:"-" }}</dd></div>
+        </dl>
+      {% endif %}
+    </article>
+
+    <article class="rounded border border-neutral-800 bg-neutral-900">
+      <header class="border-b border-neutral-800 px-4 py-3">
+        <h2 class="font-semibold">Solucion habilitada</h2>
+      </header>
+      <div class="grid gap-4 p-4">
+        <div>
+          <h3 class="mb-2 text-xs uppercase text-neutral-500">Perfiles</h3>
+          <ul class="grid gap-2 text-sm">
+            {% for assignment in profiles %}
+              <li class="flex items-center justify-between border-b border-neutral-800 pb-2">
+                <span>{{ assignment.profile.name }}</span><span class="text-emerald-300">Activo</span>
+              </li>
+            {% empty %}
+              <li class="text-neutral-500">Sin perfiles activos.</li>
+            {% endfor %}
+          </ul>
+        </div>
+        <div>
+          <h3 class="mb-2 text-xs uppercase text-neutral-500">Modulos</h3>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm">
+              <thead><tr><th class="py-2">Modulo</th><th>Estado</th><th>Vence</th></tr></thead>
+              <tbody class="divide-y divide-neutral-800">
+                {% for assignment in capabilities %}
+                  <tr>
+                    <td class="py-2">{{ assignment.capability.name }}</td>
+                    <td>{{ assignment.get_status_display }}</td>
+                    <td>{{ assignment.expires_on|date:"Y-m-d"|default:"-" }}</td>
+                  </tr>
+                {% empty %}
+                  <tr><td class="py-2 text-neutral-500" colspan="3">Sin modulos habilitados.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </article>
+  </section>
+
+  <section class="mb-6">
+    <header class="mb-3">
+      <h2 class="text-lg font-semibold">Haciendas</h2>
+    </header>
+    <div class="grid gap-4 xl:grid-cols-2">
+      {% for row in farm_forms %}
+        <article class="rounded border border-neutral-800 bg-neutral-900">
+          <header class="border-b border-neutral-800 px-4 py-3">
+            <h3 class="font-semibold">{{ row.farm.name }}</h3>
+          </header>
+          <form class="grid gap-3 p-4 md:grid-cols-2" method="post" action="{% url 'dashboard:farm_settings_update' row.farm.id %}">
+            {% csrf_token %}
+            {% include "dashboard/_form_fields.html" with form=row.form %}
+            <div class="md:col-span-2">
+              <button class="rounded bg-emerald-500 px-4 py-2 text-sm font-semibold text-neutral-950 hover:bg-emerald-400" type="submit">Guardar hacienda</button>
+            </div>
+          </form>
+        </article>
+      {% empty %}
+        <p class="text-sm text-neutral-500">No existen haciendas activas.</p>
+      {% endfor %}
+    </div>
+  </section>
+
+  {% if can_manage_users %}
+    <section id="usuarios" class="grid gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(320px,0.6fr)]">
+      <article class="rounded border border-neutral-800 bg-neutral-900">
+        <header class="border-b border-neutral-800 px-4 py-3">
+          <h2 class="font-semibold">Equipo y accesos</h2>
+        </header>
+        <div class="overflow-x-auto p-4">
+          <table class="w-full min-w-[620px] text-left text-sm">
+            <thead><tr><th class="py-2">Usuario</th><th>Nombre</th><th>Rol</th><th>Hacienda</th><th>Estado</th><th></th></tr></thead>
+            <tbody class="divide-y divide-neutral-800">
+              {% for row in user_rows %}
+                <tr>
+                  <td class="py-2 font-mono">{{ row.user.username }}</td>
+                  <td>{{ row.user.get_full_name|default:"-" }}</td>
+                  <td>{{ row.role }}</td>
+                  <td>{% if row.assignment and row.assignment.is_active %}{{ row.assignment.farm.name }}{% else %}Todas{% endif %}</td>
+                  <td>{% if row.user.is_active %}Activo{% else %}Inactivo{% endif %}</td>
+                  <td class="text-right"><a class="text-sm font-semibold text-emerald-700" href="{% url 'dashboard:tenant_settings' %}?usuario={{ row.user.id }}#usuarios">Editar</a></td>
+                </tr>
+              {% empty %}
+                <tr><td class="py-2 text-neutral-500" colspan="6">Sin usuarios.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </article>
+
+      <article class="rounded border border-neutral-800 bg-neutral-900">
+        <header class="border-b border-neutral-800 px-4 py-3">
+          <h2 class="font-semibold">{% if editing_user %}Editar {{ editing_user.username }}{% else %}Nuevo usuario{% endif %}</h2>
+        </header>
+        <form class="grid gap-3 p-4" method="post" action="{% if editing_user %}{% url 'dashboard:tenant_user_update' editing_user.id %}{% else %}{% url 'dashboard:tenant_user_create' %}{% endif %}">
+          {% csrf_token %}
+          {% include "dashboard/_form_fields.html" with form=user_form %}
+          <div class="flex flex-wrap gap-2">
+            <button class="rounded bg-emerald-500 px-4 py-2 text-sm font-semibold text-neutral-950 hover:bg-emerald-400" type="submit">{% if editing_user %}Actualizar usuario{% else %}Crear usuario{% endif %}</button>
+            {% if editing_user %}<a class="rounded border border-neutral-700 px-4 py-2 text-sm text-neutral-300" href="{% url 'dashboard:tenant_settings' %}#usuarios">Cancelar</a>{% endif %}
+          </div>
+        </form>
+      </article>
+    </section>
+  {% endif %}
+{% endblock %}

@@ -81,7 +81,7 @@
         </nav>
         <div class="kore-sidebar-footer">
           <a href="{% url 'dashboard:information_center' %}">Informacion externa</a>
-          {% if user.is_staff %}<a href="/admin/">Configuracion de la finca</a>{% endif %}
+          <a href="{% url 'dashboard:tenant_settings' %}">Configuracion</a>
           <form method="post" action="{% url 'identity:logout' %}">
             {% csrf_token %}
             <button type="submit">Cerrar jornada</button>
