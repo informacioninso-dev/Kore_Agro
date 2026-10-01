@@ -10,6 +10,7 @@ separada ni el limite futuro de la plataforma.
 ## Mapa Del Documento
 
 - [Vision e identidad comercial](#vision-del-producto).
+- [Identidad visual](#identidad-visual).
 - [Perfiles, capacidades y permisos](#modelo-de-configuracion).
 - [Capacidades y flujo compartido](#mapa-de-capacidades).
 - [Arquitectura modular](#arquitectura-modular-objetivo).
@@ -52,6 +53,24 @@ soluciones configuradas sobre la misma plataforma y el mismo codigo:
 Estas variantes no deben convertirse en repositorios, despliegues o aplicaciones
 independientes. Una mejora en un motor compartido debe beneficiar a todas las cadenas
 que lo utilizan.
+
+## Identidad Visual
+
+KORE Agro utiliza una sola familia tipografica en toda la experiencia: **Atkinson
+Hyperlegible**. Se eligio por la diferenciacion clara de caracteres y la lectura en
+pantallas pequenas, condiciones de brillo variable y jornadas operativas de campo.
+
+- Los pesos disponibles son regular (`400`) y negrita (`700`).
+- Los archivos WOFF2 se sirven desde el propio proyecto; la interfaz no depende de
+  Google Fonts ni de otra conexion externa.
+- La PWA de campo incluye ambos pesos en su cache de aplicacion para conservar la
+  misma legibilidad sin conexion.
+- Formularios, tablas, navegacion, paneles, graficas y accesos comparten la variable
+  CSS `--kore-font-family` definida en `static/ui/css/typography.css`.
+- La licencia OFL se conserva junto a los archivos en `static/ui/fonts/OFL.txt`.
+
+La paleta cromatica se define como una capa separada de la marca para poder validarla
+por contraste, uso exterior y significado operativo sin alterar esta base tipografica.
 
 ## Modelo De Configuracion
 
@@ -588,6 +607,7 @@ URLs locales:
 - Finanzas P&L: `http://localhost:8010/finanzas/`
 - Pesajes y crecimiento: `http://localhost:8010/crecimiento/`
 - Datos MVP: `http://localhost:8010/datos/`
+- Informacion integrada: `http://localhost:8010/informacion/`
 - PWA de campo: `http://localhost:8010/field/`
 - API bootstrap campo: `http://localhost:8010/api/field/bootstrap`
 - API sync eventos: `http://localhost:8010/api/sync/events`
@@ -633,6 +653,12 @@ Estado actual:
 - PostgreSQL local contiene la base `kore_agro`.
 - Tenant demo creado en schema `demo` con dominio `localhost`.
 - Datos demo: hacienda, lote de produccion, 3 animales, 3 insumos y stock inicial.
+- Centro de informacion integrado: pronostico de siete dias por hacienda mediante Open-Meteo
+  y ultimo corte de vacunacion de Agrocalidad mediante la API CKAN de Datos Abiertos Ecuador.
+- La ubicacion meteorologica se administra en Configuracion por hacienda; la consulta usa ese
+  contexto automaticamente y presenta temperatura, lluvia, viento, ET0 y UV en una grafica.
+- Las consultas externas usan tiempos de espera, limites de descarga y cache; si un proveedor
+  falla, la operacion de KORE Agro sigue disponible y se conserva el enlace a la fuente oficial.
 - Flujo validado: evento offline de ordeno genera litros e ingreso operativo.
 - Flujo validado: consumo de bodega descuenta stock y actualiza P&L.
 - Semana 2 aplicada: CRUD HTMX en `/datos/` para datos maestros del MVP.

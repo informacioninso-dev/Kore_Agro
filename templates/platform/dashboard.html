@@ -26,16 +26,16 @@
         <a href="{% url 'platform:organization_list' %}">Ver todas</a>
       </div>
       <div class="platform-table-wrap">
-        <table>
+        <table class="platform-responsive-table">
           <thead><tr><th>Organizacion</th><th>Perfil</th><th>Estado</th><th>Vigencia</th><th></th></tr></thead>
           <tbody>
             {% for row in recent_rows %}
               <tr>
-                <td><strong>{{ row.organization.name }}</strong><small>{{ row.domain|default:row.organization.schema_name }}</small></td>
-                <td><div class="platform-tags">{% for profile in row.profiles %}<span>{{ profile.name }}</span>{% empty %}<small>Sin perfil</small>{% endfor %}</div></td>
-                <td><span class="platform-status {{ row.status }}">{{ row.status_label }}</span></td>
-                <td>{{ row.organization.paid_until|date:"d M Y"|default:"Sin limite" }}</td>
-                <td><a class="platform-table-link" href="{% url 'platform:organization_edit' row.organization.pk %}">Configurar</a></td>
+                <td data-label="Organizacion"><strong>{{ row.organization.name }}</strong><small>{{ row.domain|default:row.organization.schema_name }}</small></td>
+                <td data-label="Perfil"><div class="platform-tags">{% for profile in row.profiles %}<span>{{ profile.name }}</span>{% empty %}<small>Sin perfil</small>{% endfor %}</div></td>
+                <td data-label="Estado"><span class="platform-status {{ row.status }}">{{ row.status_label }}</span></td>
+                <td data-label="Vigencia">{{ row.organization.paid_until|date:"d M Y"|default:"Sin limite" }}</td>
+                <td data-label="Accion"><a class="platform-table-link" href="{% url 'platform:organization_edit' row.organization.pk %}">Configurar</a></td>
               </tr>
             {% empty %}
               <tr><td colspan="5" class="platform-empty">Todavia no hay organizaciones registradas.</td></tr>

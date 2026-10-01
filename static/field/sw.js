@@ -1,7 +1,10 @@
-const CACHE_NAME = "kore-agro-field-v10";
+const CACHE_NAME = "kore-agro-field-v13";
 const APP_SHELL = [
   "/field/",
   "/field/manifest.webmanifest",
+  "/static/ui/css/typography.css",
+  "/static/ui/fonts/AtkinsonHyperlegible-Regular.woff2",
+  "/static/ui/fonts/AtkinsonHyperlegible-Bold.woff2",
   "/static/field/css/app.css",
   "/static/field/js/app.js"
 ];

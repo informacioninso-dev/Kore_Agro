@@ -89,6 +89,7 @@ def test_manager_can_update_farm_but_cannot_manage_organization_or_users():
             f"{prefix}-province": "Cotopaxi",
             f"{prefix}-canton": "Latacunga",
             f"{prefix}-parish": "Mulalo",
+            f"{prefix}-weather_location": "Mulalo",
             f"{prefix}-default_milk_price": "0.52",
         },
     )
@@ -101,6 +102,7 @@ def test_manager_can_update_farm_but_cannot_manage_organization_or_users():
     with tenant_context(tenant):
         farm.refresh_from_db()
         assert farm.name == "Hacienda Actualizada"
+        assert farm.weather_location == "Mulalo"
         assert farm.default_milk_price == Decimal("0.5200")
 
 

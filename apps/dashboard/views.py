@@ -47,6 +47,7 @@ from apps.milk.models import MilkYield
 from apps.reproduction.models import ReproductionEvent
 from apps.reproduction.services import daily_reproduction_attention
 
+from .external_info import get_external_information
 from .forms import (
     AnimalForm,
     AnimalSaleForm,
@@ -392,27 +393,20 @@ def action_list_fragment(request):
 
 
 def information_center(request: HttpRequest) -> HttpResponse:
-    """Show only traceable official sources until stable provider APIs are available."""
+    farms = list(Farm.objects.filter(is_active=True).order_by("name"))
+    selected_farm = _selected_farm(request)
     sources = [
         {
-            "title": "Clima y alertas",
-            "description": "Pronosticos, alertas y boletines para planificar el trabajo de campo.",
-            "meta": "INAMHI | Consulta oficial",
-            "url": "https://servicios.inamhi.gob.ec/",
-        },
-        {
-            "title": "Pronostico agrometeorologico",
-            "description": (
-                "Boletines para revisar lluvia, temperatura y condiciones de la temporada."
-            ),
-            "meta": "INAMHI | Actualizacion segun publicacion",
+            "title": "Boletines agrometeorologicos",
+            "description": "Contrasta el pronostico operativo con los boletines oficiales.",
+            "meta": "INAMHI",
             "url": "https://servicios.inamhi.gob.ec/pronostico-agrometeorologico-bisemanal-2026-julio-diciembre/",
         },
         {
-            "title": "Campanas sanitarias",
-            "description": "Consulta datos publicos de vacunacion contra aftosa y rabia.",
-            "meta": "Agrocalidad | Datos Abiertos Ecuador",
-            "url": "https://www.datosabiertos.gob.ec/dataset/datos-vacunacion-fiebre-aftosa-mas-rabia/resource/870fcb8b-2b7e-470d-adbd-b690f6996cec",
+            "title": "Datos sanitarios publicados",
+            "description": "Revisa el conjunto original usado para la consulta de aftosa y rabia.",
+            "meta": "Agrocalidad | Datos Abiertos",
+            "url": "https://www.datosabiertos.gob.ec/dataset/datos-vacunacion-fiebre-aftosa-mas-rabia",
         },
         {
             "title": "Normativa vigente",
@@ -424,7 +418,19 @@ def information_center(request: HttpRequest) -> HttpResponse:
             "url": "https://www.registroficial.gob.ec/",
         },
     ]
-    return render(request, "dashboard/information_center.html", {"sources": sources})
+    context = {
+        "farms": farms,
+        "farm_count": len(farms),
+        "selected_farm": selected_farm,
+        "sources": sources,
+        "weather": None,
+        "weather_error": "",
+        "vaccination": None,
+        "vaccination_error": "",
+    }
+    if selected_farm:
+        context.update(get_external_information(selected_farm))
+    return render(request, "dashboard/information_center.html", context)
 
 
 def _finance_context(request: HttpRequest, overrides: dict | None = None) -> dict:

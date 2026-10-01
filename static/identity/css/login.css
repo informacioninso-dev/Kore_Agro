@@ -10,52 +10,433 @@
   --error: #b63e36;
 }
 
-* { box-sizing: border-box; }
+* {
+  box-sizing: border-box;
+}
 
 body {
   min-width: 320px;
   margin: 0;
   background: var(--cream);
   color: var(--ink);
-  font-family: "Trebuchet MS", Verdana, sans-serif;
+  font-family: var(--kore-font-family);
 }
 
-.login-shell { min-height: 100vh; display: grid; grid-template-columns: minmax(0, 1.16fr) minmax(400px, 0.84fr); }
+.login-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(400px, 0.95fr);
+  min-height: 100vh;
+  min-height: 100svh;
+}
 
 .welcome-panel {
   position: relative;
-  display: flex;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: clamp(1.5rem, 3vh, 2.5rem);
   min-height: 680px;
-  flex-direction: column;
-  justify-content: space-between;
   overflow: hidden;
-  padding: clamp(2rem, 5vw, 4.5rem);
-  color: var(--cream);
+  padding: clamp(2rem, 4vw, 4rem);
   background: linear-gradient(140deg, #193c26, #285532);
+  color: var(--cream);
 }
 
-.landscape { position: absolute; z-index: 0; inset: auto 0 0; width: 100%; opacity: 0.98; pointer-events: none; }
-.landscape svg { display: block; width: 100%; height: auto; }
+.landscape {
+  position: absolute;
+  z-index: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 30%;
+  overflow: hidden;
+  opacity: 0.98;
+  pointer-events: none;
+}
 
-.brand-lockup, .mobile-brand { position: relative; z-index: 2; display: inline-flex; align-items: center; gap: 0.7rem; letter-spacing: 0.08em; }
-.brand-mark, .mobile-brand > span { display: grid; width: 2.25rem; height: 2.25rem; place-items: center; border: 1px solid var(--sun); border-radius: 0.7rem; color: var(--sun); font-family: Georgia, serif; font-size: 1.45rem; }
-.brand-lockup strong, .mobile-brand { font-size: 1.05rem; }.brand-lockup small, .mobile-brand small { display: block; color: var(--sun); font-size: 0.58rem; letter-spacing: 0.24em; }
+.landscape svg {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: block;
+  width: 100%;
+  height: auto;
+}
 
-.welcome-copy { position: relative; z-index: 2; max-width: 40rem; margin: auto 0; padding: 4rem 0 2rem; }
-.kicker { margin: 0; color: #aeca8c; font-size: 0.72rem; font-weight: 800; letter-spacing: 0.15em; text-transform: uppercase; }
-.welcome-copy h1 { margin: 0.8rem 0 1.1rem; font-family: Georgia, serif; font-size: clamp(2.6rem, 5vw, 4.6rem); font-weight: 400; line-height: 0.98; letter-spacing: -0.045em; }
-.lead { max-width: 32rem; margin: 0; color: #e3efd7; font-size: 1rem; line-height: 1.65; }
+.brand-lockup,
+.mobile-brand {
+  position: relative;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.7rem;
+}
 
-.benefits { position: relative; z-index: 2; display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; max-width: 50rem; margin: 0; padding: 0; list-style: none; }
-.benefits li { display: flex; gap: 0.6rem; align-items: flex-start; }.benefit-icon { display: grid; width: 1.8rem; height: 1.8rem; flex: 0 0 1.8rem; place-items: center; border: 1px solid rgba(228, 211, 108, 0.7); border-radius: 50%; color: var(--sun); font-size: 0.58rem; font-weight: 800; }.benefits strong, .benefits small { display: block; }.benefits strong { font-size: 0.78rem; }.benefits small { margin-top: 0.25rem; color: #bfd4b8; font-size: 0.68rem; line-height: 1.35; }
+.brand-mark,
+.mobile-brand > span {
+  display: grid;
+  width: 2.5rem;
+  height: 2.5rem;
+  place-items: center;
+  border: 1px solid var(--sun);
+  border-radius: 0.5rem;
+  color: var(--sun);
+  font-family: var(--kore-font-family);
+  font-size: 1.4rem;
+  font-weight: var(--kore-font-bold);
+}
 
-.access-panel { display: grid; align-content: center; gap: 2rem; padding: clamp(1.5rem, 6vw, 6rem); background: var(--cream); }.access-card { width: min(100%, 25rem); margin: 0 auto; }.mobile-brand { display: none; margin-bottom: 3rem; color: var(--ink); text-decoration: none; }.mobile-brand small { color: var(--moss); }
-.access-panel h2 { margin: 0.55rem 0; font-family: Georgia, serif; font-size: clamp(2rem, 3vw, 2.7rem); font-weight: 400; letter-spacing: -0.035em; }.intro { margin: 0; color: var(--muted); font-size: 0.95rem; line-height: 1.5; }
+.brand-lockup strong,
+.mobile-brand {
+  font-size: 1.05rem;
+  font-weight: var(--kore-font-bold);
+}
 
-.login-form { display: grid; gap: 0.55rem; margin-top: 2.4rem; }.login-form > label { margin-top: 0.8rem; color: var(--ink); font-size: 0.78rem; font-weight: 800; }.input-wrap { display: flex; align-items: center; gap: 0.65rem; min-height: 3.3rem; padding: 0 0.85rem; border: 1px solid var(--line); border-radius: 0.75rem; background: #fffdf7; color: #78906f; transition: border 160ms ease, box-shadow 160ms ease; }.input-wrap:focus-within { border-color: var(--forest); box-shadow: 0 0 0 3px rgba(94, 135, 77, 0.16); }.input-wrap svg { width: 1.25rem; height: 1.25rem; flex: 0 0 1.25rem; }.input-wrap input { width: 100%; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--ink); font: inherit; }.input-wrap input::placeholder { color: #9caa96; }.toggle-password { border: 0; background: transparent; color: var(--forest); font: inherit; font-size: 0.72rem; font-weight: 800; cursor: pointer; }
-.submit-button { display: flex; align-items: center; justify-content: center; gap: 0.75rem; min-height: 3.4rem; margin-top: 1.35rem; border: 0; border-radius: 0.8rem; background: var(--forest); color: #fffdf7; font: inherit; font-weight: 800; cursor: pointer; transition: transform 160ms ease, background 160ms ease; }.submit-button:hover { background: #2e653d; }.submit-button:active { transform: translateY(1px); }.submit-button span { color: var(--sun); font-size: 1.25rem; }
-.form-error, .field-error { color: var(--error); font-size: 0.75rem; line-height: 1.4; }.form-error { padding: 0.8rem; border-radius: 0.6rem; background: #fae5df; }.access-help { margin-top: 2rem; padding-top: 1.2rem; border-top: 1px solid var(--line); }.access-help strong { font-size: 0.82rem; }.access-help p { margin: 0.3rem 0 0; color: var(--muted); font-size: 0.78rem; line-height: 1.5; }.trust-note { width: min(100%, 25rem); margin: 0 auto; color: var(--muted); font-size: 0.72rem; }.trust-note span { display: inline-block; width: 0.55rem; height: 0.55rem; margin-right: 0.35rem; border-radius: 50%; background: var(--moss); }
+.brand-lockup small,
+.mobile-brand small {
+  display: block;
+  margin-top: 0.1rem;
+  color: var(--sun);
+  font-size: var(--kore-text-caption);
+}
+
+.welcome-copy {
+  position: relative;
+  z-index: 2;
+  align-self: center;
+  max-width: 36rem;
+  padding: 1rem 0;
+}
+
+.kicker {
+  margin: 0;
+  color: #aeca8c;
+  font-size: var(--kore-text-caption);
+  font-weight: var(--kore-font-bold);
+  text-transform: uppercase;
+}
+
+.welcome-copy h1 {
+  max-width: 13ch;
+  margin: 0.75rem 0 1rem;
+  color: var(--cream);
+  font-family: var(--kore-font-family);
+  font-size: clamp(2.65rem, 4.4vw, 4rem);
+  font-weight: var(--kore-font-bold);
+  line-height: 1.04;
+}
+
+.welcome-copy h1 span {
+  display: block;
+}
+
+.lead {
+  max-width: 31rem;
+  margin: 0;
+  color: #e3efd7;
+  font-size: 1rem;
+  line-height: 1.55;
+}
+
+.benefits {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(0.75rem, 1.5vw, 1.25rem);
+  max-width: 50rem;
+  margin: 0 0 clamp(10rem, 22vh, 13rem);
+  padding: 0;
+  list-style: none;
+}
+
+.benefits li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  min-width: 0;
+}
+
+.benefit-icon {
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  flex: 0 0 2rem;
+  place-items: center;
+  border: 1px solid rgba(228, 211, 108, 0.7);
+  border-radius: 50%;
+  color: var(--sun);
+  font-size: var(--kore-text-caption);
+  font-weight: var(--kore-font-bold);
+}
+
+.benefits strong,
+.benefits small {
+  display: block;
+}
+
+.benefits strong {
+  font-size: var(--kore-text-small);
+  line-height: 1.25;
+}
+
+.benefits small {
+  margin-top: 0.3rem;
+  color: #bfd4b8;
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
+.access-panel {
+  display: grid;
+  align-content: center;
+  gap: 1.75rem;
+  min-width: 0;
+  padding: clamp(2rem, 5vw, 5rem);
+  background: var(--cream);
+}
+
+.access-card,
+.trust-note {
+  width: min(100%, 26rem);
+  margin-right: auto;
+  margin-left: auto;
+}
+
+.mobile-brand {
+  display: none;
+  margin-bottom: 2.75rem;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.mobile-brand small {
+  color: var(--moss);
+}
+
+.access-panel h2 {
+  margin: 0.55rem 0 0.65rem;
+  font-family: var(--kore-font-family);
+  font-size: clamp(2rem, 2.7vw, 2.6rem);
+  font-weight: var(--kore-font-bold);
+  line-height: 1.08;
+}
+
+.intro {
+  max-width: 23rem;
+  margin: 0;
+  color: var(--muted);
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.login-form {
+  display: grid;
+  gap: 0.6rem;
+  margin-top: 2rem;
+}
+
+.login-form > label {
+  margin-top: 0.75rem;
+  color: var(--ink);
+  font-size: var(--kore-text-small);
+  font-weight: var(--kore-font-bold);
+}
+
+.input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  min-height: 3.5rem;
+  padding: 0 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
+  background: #fffdf7;
+  color: #78906f;
+  transition: border 160ms ease, box-shadow 160ms ease;
+}
+
+.input-wrap:focus-within {
+  border-color: var(--forest);
+  box-shadow: 0 0 0 3px rgba(94, 135, 77, 0.16);
+}
+
+.input-wrap svg {
+  width: 1.25rem;
+  height: 1.25rem;
+  flex: 0 0 1.25rem;
+}
+
+.input-wrap input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+}
+
+.input-wrap input::placeholder {
+  color: #9caa96;
+}
+
+.toggle-password {
+  border: 0;
+  background: transparent;
+  color: var(--forest);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: var(--kore-font-bold);
+}
+
+.submit-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  min-height: 3.5rem;
+  margin-top: 1.25rem;
+  border: 0;
+  border-radius: 0.5rem;
+  background: var(--forest);
+  color: #fffdf7;
+  cursor: pointer;
+  font: inherit;
+  font-weight: var(--kore-font-bold);
+  transition: transform 160ms ease, background 160ms ease;
+}
+
+.submit-button:hover {
+  background: #2e653d;
+}
+
+.submit-button:active {
+  transform: translateY(1px);
+}
+
+.submit-button span {
+  color: var(--sun);
+  font-size: 1.25rem;
+}
+
+.form-error,
+.field-error {
+  color: var(--error);
+  font-size: var(--kore-text-small);
+  line-height: 1.4;
+}
+
+.form-error {
+  padding: 0.8rem;
+  border-radius: 0.5rem;
+  background: #fae5df;
+}
+
+.access-help {
+  margin-top: 2rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--line);
+}
+
+.access-help strong {
+  font-size: var(--kore-text-small);
+}
+
+.access-help p {
+  margin: 0.35rem 0 0;
+  color: var(--muted);
+  font-size: var(--kore-text-small);
+  line-height: 1.5;
+}
+
+.trust-note {
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.trust-note span {
+  display: inline-block;
+  width: 0.55rem;
+  height: 0.55rem;
+  margin-right: 0.35rem;
+  border-radius: 50%;
+  background: var(--moss);
+}
+
+@media (max-width: 1100px) and (min-width: 801px) {
+  .welcome-panel {
+    padding: 2rem;
+  }
+
+  .welcome-copy h1 {
+    font-size: clamp(2.5rem, 4.4vw, 3.25rem);
+  }
+
+  .benefits small {
+    display: none;
+  }
+}
 
 @media (max-width: 800px) {
-  .login-shell { display: block; }.welcome-panel { display: none; }.access-panel { min-height: 100vh; padding: 2rem 1.4rem; }.mobile-brand { display: inline-flex; }.access-card { margin: auto; }.access-panel h2 { font-size: 2.35rem; }
+  .login-shell {
+    display: block;
+  }
+
+  .welcome-panel {
+    display: none;
+  }
+
+  .access-panel {
+    min-height: 100vh;
+    min-height: 100svh;
+    padding: 2rem 1.4rem;
+  }
+
+  .mobile-brand {
+    display: inline-flex;
+  }
+
+  .access-panel h2 {
+    font-size: clamp(2rem, 10vw, 2.35rem);
+  }
+}
+
+@media (max-height: 760px) and (min-width: 801px) {
+  .welcome-panel {
+    gap: 1rem;
+    padding-top: 1.5rem;
+    padding-bottom: 1.5rem;
+  }
+
+  .welcome-copy h1 {
+    font-size: clamp(2.35rem, 4vw, 3.2rem);
+  }
+
+  .lead {
+    line-height: 1.45;
+  }
+
+  .benefits {
+    margin-bottom: 8.5rem;
+  }
+
+  .benefits small {
+    display: none;
+  }
+
+  .access-panel {
+    padding-top: 1.5rem;
+    padding-bottom: 1.5rem;
+  }
+
+  .login-form {
+    margin-top: 1.25rem;
+  }
+
+  .access-help {
+    margin-top: 1.25rem;
+  }
 }

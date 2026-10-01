@@ -17,5 +17,8 @@
     {% if field.errors %}
       <span class="text-xs normal-case text-red-300">{{ field.errors|striptags }}</span>
     {% endif %}
+    {% if field.help_text %}
+      <span class="text-xs font-normal normal-case text-neutral-500">{{ field.help_text }}</span>
+    {% endif %}
   </label>
 {% endfor %}

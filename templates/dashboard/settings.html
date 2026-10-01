@@ -84,9 +84,10 @@
     </header>
     <div class="grid gap-4 xl:grid-cols-2">
       {% for row in farm_forms %}
-        <article class="rounded border border-neutral-800 bg-neutral-900">
+        <article id="hacienda-{{ row.farm.id }}" class="rounded border border-neutral-800 bg-neutral-900">
           <header class="border-b border-neutral-800 px-4 py-3">
             <h3 class="font-semibold">{{ row.farm.name }}</h3>
+            <p class="mt-1 text-xs text-neutral-500">La ubicacion alimenta automaticamente el clima y los datos sanitarios.</p>
           </header>
           <form class="grid gap-3 p-4 md:grid-cols-2" method="post" action="{% url 'dashboard:farm_settings_update' row.farm.id %}">
             {% csrf_token %}

@@ -170,7 +170,14 @@ def test_finance_engine_returns_daily_pnl_and_cost_breakdown():
         )
 
         daily_rows = get_daily_pnl(farm=farm, start_date=yesterday, end_date=today)
-        costs = {row.cost_type: row for row in get_cost_breakdown(farm=farm)}
+        costs = {
+            row.cost_type: row
+            for row in get_cost_breakdown(
+                farm=farm,
+                start_date=yesterday,
+                end_date=today,
+            )
+        }
 
         assert [row.day for row in daily_rows] == [today, yesterday]
         assert daily_rows[0].pnl.liters == Decimal("10")

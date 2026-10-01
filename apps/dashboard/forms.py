@@ -65,8 +65,18 @@ def _active_inputs():
 class FarmForm(DarkModeModelForm):
     class Meta:
         model = Farm
-        fields = ["name", "code", "province", "canton", "parish", "default_milk_price", "is_active"]
+        fields = [
+            "name",
+            "code",
+            "province",
+            "canton",
+            "parish",
+            "weather_location",
+            "default_milk_price",
+            "is_active",
+        ]
         widgets = {
+            "weather_location": forms.TextInput(attrs={"placeholder": "Ej. Tumbaco"}),
             "default_milk_price": forms.NumberInput(attrs={"step": "0.0001", "min": "0"}),
         }
         labels = {
@@ -75,6 +85,7 @@ class FarmForm(DarkModeModelForm):
             "province": "Provincia",
             "canton": "Canton",
             "parish": "Parroquia",
+            "weather_location": "Ubicacion para clima",
             "default_milk_price": "Precio leche",
             "is_active": "Activa",
         }
@@ -96,8 +107,17 @@ class OrganizationSettingsForm(DarkModeModelForm):
 class FarmSettingsForm(DarkModeModelForm):
     class Meta:
         model = Farm
-        fields = ["name", "code", "province", "canton", "parish", "default_milk_price"]
+        fields = [
+            "name",
+            "code",
+            "province",
+            "canton",
+            "parish",
+            "weather_location",
+            "default_milk_price",
+        ]
         widgets = {
+            "weather_location": forms.TextInput(attrs={"placeholder": "Ej. Tumbaco"}),
             "default_milk_price": forms.NumberInput(attrs={"step": "0.0001", "min": "0"}),
         }
         labels = {
@@ -106,6 +126,7 @@ class FarmSettingsForm(DarkModeModelForm):
             "province": "Provincia",
             "canton": "Canton",
             "parish": "Parroquia",
+            "weather_location": "Ubicacion para clima",
             "default_milk_price": "Precio de leche",
         }
 

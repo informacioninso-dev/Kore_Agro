@@ -11,6 +11,11 @@ class Farm(TenantModel, SoftDeleteModel):
     province = models.CharField(max_length=80, blank=True)
     canton = models.CharField(max_length=80, blank=True)
     parish = models.CharField(max_length=80, blank=True)
+    weather_location = models.CharField(
+        max_length=160,
+        blank=True,
+        help_text="Parroquia o ciudad usada para consultar el pronostico.",
+    )
     default_milk_price = models.DecimalField(
         max_digits=8,
         decimal_places=4,

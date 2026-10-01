@@ -7,8 +7,10 @@
     <title>{% block title %}KORE AGRO{% endblock %}</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/htmx.org@2.0.4"></script>
-    <link rel="stylesheet" href="{% static 'ui/css/shell.css' %}">
-    <link rel="stylesheet" href="{% static 'ui/css/admin.css' %}">
+    <link rel="stylesheet" href="{% static 'ui/css/typography.css' %}?v=20261001-brand1">
+    <link rel="stylesheet" href="{% static 'ui/css/shell.css' %}?v=20261001-brand3">
+    <link rel="stylesheet" href="{% static 'ui/css/admin.css' %}?v=20261001-brand2">
+    {% block extra_head %}{% endblock %}
   </head>
   <body class="kore-shell antialiased">
     <div class="kore-layout">
@@ -69,7 +71,7 @@
           </a>
           {% endif %}
           {% if 'documents' in kore_capabilities %}
-          <a href="/cumplimiento/">
+          <a class="{% if '/cumplimiento/' in request.path %}is-active{% endif %}" href="/cumplimiento/">
             <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 3h8l3 3v15H7z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11h5m-5 4h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span>Guias y documentos</span>
           </a>
           {% endif %}
@@ -100,6 +102,20 @@
         {% if 'field_offline' in kore_capabilities %}<a class="is-field" href="/field/"><span>Registrar</span></a>{% endif %}
         {% if 'finance' in kore_capabilities %}<a class="{% if '/finanzas/' in request.path %}is-active{% endif %}" href="/finanzas/"><span>Cuentas</span></a>{% endif %}
       </nav>
+      <details class="kore-mobile-more">
+        <summary><span aria-hidden="true">...</span><small>Mas</small></summary>
+        <nav aria-label="Navegacion secundaria">
+          {% if 'documents' in kore_capabilities %}<a class="{% if '/cumplimiento/' in request.path %}is-active{% endif %}" href="/cumplimiento/">Guias y documentos</a>{% endif %}
+          {% if 'audit' in kore_capabilities and perms.audit.view_auditevent %}<a href="/auditoria/">Auditoria</a>{% endif %}
+          <a href="{% url 'dashboard:information_center' %}">Informacion externa</a>
+          <a href="{% url 'dashboard:tenant_settings' %}">Configuracion</a>
+          <form method="post" action="{% url 'identity:logout' %}">
+            {% csrf_token %}
+            <button type="submit">Cerrar jornada</button>
+          </form>
+        </nav>
+      </details>
     </div>
+    {% block extra_scripts %}{% endblock %}
   </body>
 </html>

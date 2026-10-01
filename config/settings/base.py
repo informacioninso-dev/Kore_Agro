@@ -137,3 +137,35 @@ CELERY_TASK_DEFAULT_QUEUE = "kore-agro"
 
 KORE_DEFAULT_MILK_PRICE = env.float("KORE_DEFAULT_MILK_PRICE", default=0.45)
 SRI_ADAPTER_CLASS = env("SRI_ADAPTER_CLASS", default="")
+
+EXTERNAL_INFO_HTTP_TIMEOUT = env.float("EXTERNAL_INFO_HTTP_TIMEOUT", default=5.0)
+EXTERNAL_INFO_MAX_JSON_BYTES = env.int("EXTERNAL_INFO_MAX_JSON_BYTES", default=1_000_000)
+EXTERNAL_INFO_MAX_DOWNLOAD_BYTES = env.int(
+    "EXTERNAL_INFO_MAX_DOWNLOAD_BYTES", default=20_000_000
+)
+EXTERNAL_INFO_MAX_XLSX_BYTES = env.int("EXTERNAL_INFO_MAX_XLSX_BYTES", default=100_000_000)
+EXTERNAL_INFO_GEOCODE_CACHE_SECONDS = env.int(
+    "EXTERNAL_INFO_GEOCODE_CACHE_SECONDS", default=86_400
+)
+EXTERNAL_INFO_WEATHER_CACHE_SECONDS = env.int(
+    "EXTERNAL_INFO_WEATHER_CACHE_SECONDS", default=1_200
+)
+EXTERNAL_INFO_SANITARY_CACHE_SECONDS = env.int(
+    "EXTERNAL_INFO_SANITARY_CACHE_SECONDS", default=21_600
+)
+OPEN_METEO_GEOCODING_URL = env(
+    "OPEN_METEO_GEOCODING_URL",
+    default="https://geocoding-api.open-meteo.com/v1/search",
+)
+OPEN_METEO_FORECAST_URL = env(
+    "OPEN_METEO_FORECAST_URL",
+    default="https://api.open-meteo.com/v1/forecast",
+)
+AGROCALIDAD_CKAN_PACKAGE_URL = env(
+    "AGROCALIDAD_CKAN_PACKAGE_URL",
+    default="https://www.datosabiertos.gob.ec/api/3/action/package_show",
+)
+AGROCALIDAD_VACCINATION_DATASET_ID = env(
+    "AGROCALIDAD_VACCINATION_DATASET_ID",
+    default="datos-vacunacion-fiebre-aftosa-mas-rabia",
+)

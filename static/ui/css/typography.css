@@ -1,0 +1,53 @@
+@font-face {
+  font-family: "Atkinson Hyperlegible";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("../fonts/AtkinsonHyperlegible-Regular.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Atkinson Hyperlegible";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("../fonts/AtkinsonHyperlegible-Bold.woff2") format("woff2");
+}
+
+:root {
+  --kore-font-family: "Atkinson Hyperlegible", "Segoe UI", Arial, sans-serif;
+  --kore-text-caption: 0.75rem;
+  --kore-text-small: 0.875rem;
+  --kore-text-body: 1rem;
+  --kore-font-regular: 400;
+  --kore-font-bold: 700;
+}
+
+html,
+body,
+button,
+input,
+select,
+textarea {
+  font-family: var(--kore-font-family);
+}
+
+body {
+  font-size: 16px;
+  line-height: 1.45;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+*,
+*::before,
+*::after {
+  letter-spacing: 0 !important;
+}

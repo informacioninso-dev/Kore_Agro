@@ -20,7 +20,8 @@ body {
   min-height: 100vh;
   background: var(--bg);
   color: var(--text);
-  font-family: "Trebuchet MS", Verdana, sans-serif;
+  font-family: var(--kore-font-family);
+  overscroll-behavior-y: none;
 }
 
 .topbar {
@@ -31,7 +32,7 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  padding: 1rem;
+  padding: calc(1rem + env(safe-area-inset-top)) 1rem 1rem;
   border-bottom: 1px solid var(--border);
   background: rgba(20, 38, 29, 0.96);
   color: #f7faf7;
@@ -41,7 +42,8 @@ body {
 .label {
   display: block;
   color: var(--muted);
-  font-size: 0.72rem;
+  font-size: var(--kore-text-caption);
+  font-weight: var(--kore-font-bold);
   text-transform: uppercase;
 }
 
@@ -62,7 +64,7 @@ h2 {
   display: grid;
   gap: 1rem;
   padding: 1rem;
-  padding-bottom: 6rem;
+  padding-bottom: calc(6rem + env(safe-area-inset-bottom));
 }
 
 .fieldHero {
@@ -81,7 +83,7 @@ h2 {
 
 .fieldHero h2 {
   margin-top: 0.25rem;
-  font-family: Georgia, serif;
+  font-family: var(--kore-font-family);
   font-size: 1.55rem;
   color: #f7faf7;
 }
@@ -90,15 +92,14 @@ h2 {
   max-width: 28rem;
   margin: 0.5rem 0 0;
   color: #cfdbcf;
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   line-height: 1.45;
 }
 
 .eyebrow {
   color: var(--accent);
-  font-size: 0.7rem;
-  font-weight: 800;
-  letter-spacing: 0.12em;
+  font-size: var(--kore-text-caption);
+  font-weight: var(--kore-font-bold);
   text-transform: uppercase;
 }
 
@@ -213,8 +214,8 @@ h2 {
 .quickAction small {
   margin-top: 0.25rem;
   color: inherit;
-  font-size: 0.73rem;
-  font-weight: 400;
+  font-size: var(--kore-text-small);
+  font-weight: var(--kore-font-regular);
   opacity: 0.82;
 }
 
@@ -280,8 +281,8 @@ h2 {
 .emptyState {
   margin-top: 0.2rem;
   color: var(--muted);
-  font-size: 0.75rem;
-  font-weight: 400;
+  font-size: var(--kore-text-small);
+  font-weight: var(--kore-font-regular);
 }
 
 .attentionArrow { color: var(--accent); font-size: 1.35rem; }
@@ -328,7 +329,7 @@ button,
 input,
 select {
   width: 100%;
-  min-height: 2.75rem;
+  min-height: 3rem;
   border: 1px solid var(--border);
   border-radius: 0.45rem;
   background: #fff;
@@ -342,8 +343,8 @@ button {
 }
 
 .iconButton {
-  width: 2.75rem;
-  flex: 0 0 2.75rem;
+  width: 3rem;
+  flex: 0 0 3rem;
   border-color: #6c8951;
   background: transparent;
   color: var(--accent);
@@ -363,7 +364,7 @@ button {
   min-height: 3rem;
   padding: 0 0.6rem;
   color: var(--muted);
-  font-size: 0.78rem;
+  font-size: var(--kore-text-small);
 }
 
 .tab.active {
@@ -391,7 +392,7 @@ button {
   display: block;
   margin-bottom: 0.85rem;
   color: var(--muted);
-  font-size: 0.8rem;
+  font-size: var(--kore-text-small);
   line-height: 1.4;
 }
 
@@ -418,7 +419,7 @@ label {
   display: grid;
   gap: 0.35rem;
   color: var(--muted);
-  font-size: 0.82rem;
+  font-size: var(--kore-text-small);
 }
 
 input,
@@ -429,7 +430,7 @@ select {
 .formHint {
   margin: -0.2rem 0 0;
   color: var(--muted);
-  font-size: 0.78rem;
+  font-size: var(--kore-text-small);
 }
 
 input:disabled,
@@ -499,9 +500,9 @@ button:disabled {
 }
 
 .queueActions button {
-  min-height: 2.25rem;
+  min-height: 3rem;
   padding: 0 0.65rem;
-  font-size: 0.8rem;
+  font-size: var(--kore-text-small);
 }
 
 .queueActions .queueDiscard {
@@ -511,7 +512,7 @@ button:disabled {
 
 @media (min-width: 760px) {
   .shell {
-    max-width: 720px;
+    max-width: 860px;
     margin: 0 auto;
   }
 
@@ -526,4 +527,19 @@ button:disabled {
   .farmSwitcher {
     grid-column: auto;
   }
+}
+
+@media (max-width: 420px) {
+  .topbar { gap: 0.6rem; padding-right: 0.75rem; padding-left: 0.75rem; }
+  .fieldHero { padding: 1rem; }
+  .heroMark { width: 3.5rem; min-width: 3.5rem; }
+  .queueActions { grid-template-columns: 1fr; }
+}
+
+@media (orientation: landscape) and (max-height: 600px) {
+  .fieldHero { padding: 0.85rem 1rem; }
+  .fieldHero h2 { font-size: 1.25rem; }
+  .fieldHero p { margin-top: 0.3rem; }
+  .heroMark { width: 3rem; min-width: 3rem; }
+  .shell { padding-bottom: 2rem; }
 }

@@ -1,21 +1,272 @@
 {% extends "base.html" %}
 
-{% block title %}KORE AGRO - Informacion externa{% endblock %}
+{% block title %}KORE AGRO - Informacion para decidir{% endblock %}
+
+{% block extra_head %}
+  <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+{% endblock %}
 
 {% block content %}
-  <section class="kore-page-heading">
-    <p class="eyebrow">Consulta externa</p>
-    <h1>Informacion externa</h1>
-    <p>Fuentes oficiales para consultar clima, campanas y normativa. Cada consulta abre la fuente original y no reemplaza indicaciones de Agrocalidad, un veterinario o asesoria legal.</p>
+  <section class="kore-page-heading external-heading">
+    <p class="eyebrow">Consulta integrada</p>
+    <h1>Informacion para decidir</h1>
+    <p>Clima y datos sanitarios consultados desde KORE Agro para la ubicacion de tu hacienda.</p>
   </section>
-  <section class="kore-info-grid" aria-label="Fuentes oficiales">
-    {% for source in sources %}
-      <article class="kore-info-card">
-        <span class="source-meta">{{ source.meta }}</span>
-        <h2>{{ source.title }}</h2>
-        <p>{{ source.description }}</p>
-        <a href="{{ source.url }}" target="_blank" rel="noopener noreferrer">Consultar fuente oficial</a>
-      </article>
-    {% endfor %}
+
+  {% if farms %}
+    <div class="external-context">
+      <div>
+        <span>Hacienda activa</span>
+        <strong>{{ selected_farm.name }}</strong>
+        <small>{{ selected_farm.weather_location|default:selected_farm.parish|default:selected_farm.canton|default:selected_farm.province|default:"Ubicacion pendiente" }}</small>
+      </div>
+      <a href="{% url 'dashboard:tenant_settings' %}#hacienda-{{ selected_farm.id }}">Editar ubicacion</a>
+    </div>
+
+    {% if farm_count > 1 %}
+      <form class="external-farm-switch" method="get">
+        <label for="farm">Cambiar hacienda</label>
+        <select id="farm" name="farm">
+          {% for farm in farms %}
+            <option value="{{ farm.id }}" {% if selected_farm.id == farm.id %}selected{% endif %}>{{ farm.name }}</option>
+          {% endfor %}
+        </select>
+        <button type="submit">Ver</button>
+      </form>
+    {% endif %}
+
+    <section class="external-section" aria-labelledby="weather-title">
+      <div class="external-section-heading">
+        <div>
+          <p class="source-meta">Pronostico operativo</p>
+          <h2 id="weather-title">Clima de la hacienda</h2>
+        </div>
+        {% if weather %}
+          <p>{{ weather.location.name }}, {{ weather.location.province }} &middot; actualizado {{ weather.fetched_at|date:"d/m/Y H:i" }}</p>
+        {% endif %}
+      </div>
+
+      {% if weather %}
+        <div class="weather-summary" aria-label="Condiciones actuales">
+          <article><span>Ahora</span><strong>{{ weather.current.temperature|floatformat:1 }} &deg;C</strong><small>{{ weather.current.condition }}</small></article>
+          <article><span>Humedad</span><strong>{{ weather.current.humidity|floatformat:0 }} %</strong><small>Humedad relativa</small></article>
+          <article><span>Lluvia</span><strong>{{ weather.current.precipitation|floatformat:2 }} mm</strong><small>Medicion actual</small></article>
+          <article><span>Viento</span><strong>{{ weather.current.wind|floatformat:1 }} km/h</strong><small>Velocidad actual</small></article>
+        </div>
+
+        <div class="weather-alerts" aria-label="Alertas operativas">
+          {% for alert in weather.alerts %}
+            <article class="alert-{{ alert.level }}">
+              <strong>{{ alert.title }}</strong>
+              <span>{{ alert.detail }}</span>
+            </article>
+          {% endfor %}
+        </div>
+
+        <div class="weather-chart-panel">
+          <div class="chart-heading">
+            <div><span>Proximos 7 dias</span><strong>Temperatura y lluvia</strong></div>
+            <div class="chart-legend" aria-hidden="true"><span class="legend-max">Maxima</span><span class="legend-min">Minima</span><span class="legend-rain">Lluvia</span></div>
+          </div>
+          <div class="weather-chart-wrap">
+            <canvas id="weatherChart" aria-label="Grafica del pronostico de siete dias" role="img"></canvas>
+          </div>
+          <noscript><p class="chart-fallback">Activa JavaScript para ver la grafica semanal.</p></noscript>
+        </div>
+
+        <div class="week-summary" aria-label="Resumen semanal">
+          <article><span>Lluvia acumulada</span><strong>{{ weather.week.rain_total|floatformat:1 }} mm</strong></article>
+          <article><span>Viento maximo</span><strong>{{ weather.week.wind_max|floatformat:1 }} km/h</strong></article>
+          <article><span>ET0 acumulada</span><strong>{{ weather.week.evapotranspiration_total|floatformat:2 }} mm</strong></article>
+          <article><span>UV maximo</span><strong>{{ weather.week.uv_max|floatformat:1 }}</strong></article>
+        </div>
+        {{ weather.chart|json_script:"weather-chart-data" }}
+        <p class="external-attribution">Pronostico modelado por <a href="{{ weather.source_url }}" target="_blank" rel="noopener noreferrer">Open-Meteo</a>. Confirma alertas oficiales con INAMHI.</p>
+      {% else %}
+        <div class="external-empty">
+          <strong>No se pudo actualizar el clima.</strong>
+          <p>{{ weather_error }}</p>
+          <a href="{% url 'dashboard:tenant_settings' %}#hacienda-{{ selected_farm.id }}">Revisar ubicacion de la hacienda</a>
+        </div>
+      {% endif %}
+    </section>
+
+    <section class="external-section" aria-labelledby="sanitary-title">
+      <div class="external-section-heading">
+        <div>
+          <p class="source-meta">Vigilancia sanitaria</p>
+          <h2 id="sanitary-title">Vacunacion publicada</h2>
+        </div>
+        {% if vaccination %}
+          <p>Ultimo corte: {{ vaccination.published_at|date:"d/m/Y"|default:"Fecha no informada" }}</p>
+        {% endif %}
+      </div>
+
+      {% if vaccination %}
+        <div class="sanitary-grid">
+          <article>
+            <span>Fiebre aftosa &middot; {{ vaccination.aftosa.year|default:"Corte vigente" }}</span>
+            <strong>{% if vaccination.aftosa.canton_doses != None %}{{ vaccination.aftosa.canton_doses }}{% else %}Sin dato{% endif %}</strong>
+            <small>Dosis reportadas en {{ vaccination.canton|default:"el canton configurado" }}</small>
+            <p>{% if vaccination.aftosa.province_doses != None %}{{ vaccination.aftosa.province_doses }} dosis en {{ vaccination.province }}{% else %}Sin coincidencias para la provincia configurada{% endif %}</p>
+          </article>
+          <article>
+            <span>Rabia &middot; {{ vaccination.rabia.year|default:"Corte vigente" }}</span>
+            <strong>{% if vaccination.rabia.canton_doses != None %}{{ vaccination.rabia.canton_doses }}{% else %}Sin dato{% endif %}</strong>
+            <small>Dosis reportadas en {{ vaccination.canton|default:"el canton configurado" }}</small>
+            <p>{% if vaccination.rabia.province_doses != None %}{{ vaccination.rabia.province_doses }} dosis en {{ vaccination.province }}{% else %}Sin coincidencias para la provincia configurada{% endif %}</p>
+          </article>
+        </div>
+        <div class="dataset-note">
+          <div><strong>{{ vaccination.dataset_title }}</strong><span>{{ vaccination.resource_name }}</span></div>
+          <a href="{{ vaccination.source_url }}" target="_blank" rel="noopener noreferrer">Ver ficha oficial</a>
+          <a href="{{ vaccination.download_url }}" target="_blank" rel="noopener noreferrer">Descargar corte</a>
+        </div>
+      {% else %}
+        <div class="external-empty">
+          <strong>No se pudo actualizar el corte sanitario.</strong>
+          <p>{{ vaccination_error }}</p>
+          <a href="{% url 'dashboard:tenant_settings' %}#hacienda-{{ selected_farm.id }}">Revisar provincia y canton</a>
+        </div>
+      {% endif %}
+    </section>
+  {% else %}
+    <div class="external-empty">
+      <strong>Primero registra una hacienda.</strong>
+      <p>La consulta usa su provincia, canton y parroquia para mostrar informacion relevante.</p>
+      <a href="{% url 'dashboard:tenant_settings' %}">Ir a configuracion</a>
+    </div>
+  {% endif %}
+
+  <section class="official-sources" aria-labelledby="sources-title">
+    <div class="external-section-heading">
+      <div><p class="source-meta">Respaldo</p><h2 id="sources-title">Fuentes oficiales</h2></div>
+      <p>Abre la fuente solo cuando necesites verificar el documento original.</p>
+    </div>
+    <div class="kore-info-grid">
+      {% for source in sources %}
+        <article class="kore-info-card">
+          <span class="source-meta">{{ source.meta }}</span>
+          <h3>{{ source.title }}</h3>
+          <p>{{ source.description }}</p>
+          <a href="{{ source.url }}" target="_blank" rel="noopener noreferrer">Abrir fuente oficial</a>
+        </article>
+      {% endfor %}
+    </div>
   </section>
+{% endblock %}
+
+{% block extra_scripts %}
+  {% if weather %}
+    <script>
+      document.addEventListener("DOMContentLoaded", () => {
+        const canvas = document.getElementById("weatherChart");
+        const payload = document.getElementById("weather-chart-data");
+        if (!canvas || !payload || !window.Chart) return;
+
+        const forecast = JSON.parse(payload.textContent);
+        Chart.defaults.font.family = '"Atkinson Hyperlegible", "Segoe UI", Arial, sans-serif';
+        const dateFormatter = new Intl.DateTimeFormat("es-EC", {
+          weekday: "short",
+          day: "2-digit",
+        });
+        const labels = forecast.dates.map((value) =>
+          dateFormatter.format(new Date(`${value}T12:00:00`))
+        );
+        const number = (value, digits = 1) =>
+          value === null || value === undefined
+            ? "-"
+            : Number(value).toLocaleString("es-EC", {
+                minimumFractionDigits: digits,
+                maximumFractionDigits: digits,
+              });
+
+        new Chart(canvas, {
+          data: {
+            labels,
+            datasets: [
+              {
+                type: "bar",
+                label: "Lluvia (mm)",
+                data: forecast.rain_mm,
+                backgroundColor: "rgba(57, 121, 149, 0.28)",
+                borderColor: "#397995",
+                borderWidth: 1,
+                borderRadius: 4,
+                yAxisID: "rain",
+                order: 3,
+              },
+              {
+                type: "line",
+                label: "Maxima (°C)",
+                data: forecast.temperature_max,
+                borderColor: "#b56b2b",
+                backgroundColor: "#b56b2b",
+                borderWidth: 2.5,
+                pointRadius: 3,
+                pointHoverRadius: 5,
+                tension: 0.28,
+                yAxisID: "temperature",
+                order: 1,
+              },
+              {
+                type: "line",
+                label: "Minima (°C)",
+                data: forecast.temperature_min,
+                borderColor: "#2f6b42",
+                backgroundColor: "#2f6b42",
+                borderWidth: 2.5,
+                pointRadius: 3,
+                pointHoverRadius: 5,
+                tension: 0.28,
+                yAxisID: "temperature",
+                order: 2,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: "index", intersect: false },
+            animation: { duration: 350 },
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                backgroundColor: "#193326",
+                padding: 12,
+                titleFont: { size: 13, weight: "bold" },
+                bodyFont: { size: 12 },
+                callbacks: {
+                  afterBody(items) {
+                    const index = items[0].dataIndex;
+                    return [
+                      `Condicion: ${forecast.conditions[index]}`,
+                      `Prob. lluvia: ${number(forecast.rain_probability[index], 0)} %`,
+                      `Viento: ${number(forecast.wind_max[index])} km/h`,
+                      `ET0: ${number(forecast.evapotranspiration[index], 2)} mm`,
+                      `UV: ${number(forecast.uv_max[index])}`,
+                    ];
+                  },
+                },
+              },
+            },
+            scales: {
+              x: { grid: { display: false }, ticks: { color: "#68766a" } },
+              temperature: {
+                position: "left",
+                grid: { color: "rgba(104, 118, 106, 0.14)" },
+                ticks: { color: "#68766a", callback: (value) => `${value}°` },
+              },
+              rain: {
+                position: "right",
+                beginAtZero: true,
+                grid: { drawOnChartArea: false },
+                ticks: { color: "#397995", callback: (value) => `${value} mm` },
+              },
+            },
+          },
+        });
+      });
+    </script>
+  {% endif %}
 {% endblock %}

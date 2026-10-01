@@ -2,24 +2,24 @@
   <div class="grid gap-3 md:grid-cols-5">
     {% if 'milk' in kore_capabilities %}
     <article class="rounded-xl border border-stone-200 bg-white p-4 shadow-sm">
-      <div class="text-xs font-bold uppercase tracking-wide text-stone-500">Leche registrada</div>
+      <div class="text-xs font-bold uppercase text-stone-500">Leche registrada</div>
       <div class="mt-2 text-2xl font-semibold text-emerald-950">{{ pnl.liters|floatformat:2 }} L</div>
     </article>
     {% endif %}
     <article class="rounded-xl border border-stone-200 bg-white p-4 shadow-sm">
-      <div class="text-xs font-bold uppercase tracking-wide text-stone-500">Entradas</div>
+      <div class="text-xs font-bold uppercase text-stone-500">Entradas</div>
       <div class="mt-2 text-2xl font-semibold text-emerald-950">$ {{ pnl.revenue|floatformat:2 }}</div>
     </article>
     <article class="rounded-xl border border-stone-200 bg-white p-4 shadow-sm">
-      <div class="text-xs font-bold uppercase tracking-wide text-stone-500">Gastos</div>
+      <div class="text-xs font-bold uppercase text-stone-500">Gastos</div>
       <div class="mt-2 text-2xl font-semibold text-emerald-950">$ {{ pnl.costs|floatformat:2 }}</div>
     </article>
     {% if 'milk' in kore_capabilities %}<article class="rounded-xl border border-stone-200 bg-white p-4 shadow-sm">
-      <div class="text-xs font-bold uppercase tracking-wide text-stone-500">Cuesta cada litro</div>
+      <div class="text-xs font-bold uppercase text-stone-500">Cuesta cada litro</div>
       <div class="mt-2 text-2xl font-semibold text-emerald-950">$ {{ pnl.cost_per_liter|floatformat:4 }}</div>
     </article>{% endif %}
     <article class="rounded-xl border border-emerald-800 bg-emerald-800 p-4 shadow-sm">
-      <div class="text-xs font-bold uppercase tracking-wide text-emerald-100">Lo que quedo</div>
+      <div class="text-xs font-bold uppercase text-emerald-100">Lo que quedo</div>
       <div class="mt-2 text-2xl font-semibold text-white">$ {{ pnl.net_profit|floatformat:2 }}</div>
     </article>
   </div>
