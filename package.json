@@ -1,0 +1,16 @@
+{
+  "name": "kore-agro-ui",
+  "private": true,
+  "scripts": {
+    "build:css": "tailwindcss -i ./assets/css/tailwind-input.css -o ./static/ui/css/tailwind.css --minify",
+    "build:vendor": "node ./scripts/copy-vendor.mjs",
+    "build": "npm run build:css && npm run build:vendor"
+  },
+  "dependencies": {
+    "chart.js": "4.4.7",
+    "htmx.org": "2.0.4"
+  },
+  "devDependencies": {
+    "tailwindcss": "3.4.17"
+  }
+}

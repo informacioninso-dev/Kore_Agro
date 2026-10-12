@@ -1,5 +1,6 @@
 from uuid import UUID
 
+from django.conf import settings
 from django.db.models import F, Q
 from django.utils import timezone
 from ninja import NinjaAPI
@@ -42,10 +43,20 @@ def _validate_device(request) -> FieldDevice:
     except ValueError as exc:
         raise HttpError(400, "X-Kore-Device-ID must be a UUID.") from exc
 
-    device, created = FieldDevice.objects.get_or_create(
-        device_uuid=device_id,
-        defaults={"name": f"Dispositivo {str(device_id)[:8]}", "assigned_to": request.auth},
-    )
+    device = FieldDevice.objects.filter(device_uuid=device_id).first()
+    if device is None:
+        device_count = FieldDevice.objects.filter(assigned_to=request.auth).count()
+        if device_count >= settings.KORE_MAX_FIELD_DEVICES_PER_USER:
+            raise HttpError(429, "Limite de dispositivos alcanzado. Solicita ayuda al dueno.")
+        device = FieldDevice.objects.create(
+            device_uuid=device_id,
+            name=f"Dispositivo {str(device_id)[:8]}",
+            assigned_to=request.auth,
+            is_trusted=True,
+        )
+        created = True
+    else:
+        created = False
     if not created and device.assigned_to_id not in (None, request.auth.id):
         raise HttpError(403, "Este dispositivo pertenece a otro usuario.")
     if not device.is_trusted:
@@ -295,6 +306,8 @@ def field_bootstrap(request):
 @api.post("/sync/events", response=ActionQueueResponseSchema)
 def sync_events(request, payload: ActionQueueSchema):
     device = _validate_device(request)
+    if any(event.device_id != device.device_uuid for event in payload.events):
+        raise HttpError(400, "El dispositivo del evento no coincide con la sesion de campo.")
     capabilities = request_capability_codes(request)
     allowed_farm_ids = set(accessible_farms_for_user(request.auth).values_list("id", flat=True))
     allowed_worker_ids = None

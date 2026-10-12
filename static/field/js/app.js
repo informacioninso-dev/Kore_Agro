@@ -1,9 +1,14 @@
 (function () {
-  const DB_NAME = "kore-agro-field";
+  const storageScope = document.body.dataset.storageScope;
+  const DB_NAME = `kore-agro-field-${storageScope}`;
   const DB_VERSION = 1;
   const EVENT_STORE = "events";
   const META_STORE = "meta";
-  const config = window.KORE_FIELD_CONFIG;
+  const config = {
+    bootstrapUrl: document.body.dataset.bootstrapUrl,
+    syncUrl: document.body.dataset.syncUrl,
+    serviceWorkerUrl: document.body.dataset.serviceWorkerUrl
+  };
 
   let db;
   let masters = {
@@ -62,18 +67,28 @@
   }
 
   function deviceId() {
-    let value = localStorage.getItem("kore_device_id");
+    const key = `kore_device_id_${storageScope}`;
+    let value = localStorage.getItem(key);
     if (!value) {
       value = crypto.randomUUID();
-      localStorage.setItem("kore_device_id", value);
+      localStorage.setItem(key, value);
     }
     return value;
   }
 
   function nextSequence() {
-    const current = Number(localStorage.getItem("kore_client_sequence") || "0") + 1;
-    localStorage.setItem("kore_client_sequence", String(current));
+    const key = `kore_client_sequence_${storageScope}`;
+    const current = Number(localStorage.getItem(key) || "0") + 1;
+    localStorage.setItem(key, String(current));
     return current;
+  }
+
+  function csrfToken() {
+    const prefix = "csrftoken=";
+    const cookie = document.cookie.split(";").map((value) => value.trim()).find(
+      (value) => value.startsWith(prefix)
+    );
+    return cookie ? decodeURIComponent(cookie.slice(prefix.length)) : "";
   }
 
   async function queueEvent(eventType, payload) {
@@ -171,7 +186,11 @@
 
       const response = await fetch(config.syncUrl, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "X-Kore-Device-ID": deviceId() },
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": csrfToken(),
+          "X-Kore-Device-ID": deviceId()
+        },
         body: JSON.stringify({ events })
       });
 
@@ -345,7 +364,7 @@
   }
 
   function farmStorageKey() {
-    return `kore_selected_farm_${masters.tenant || "default"}`;
+    return `kore_selected_farm_${storageScope}_${masters.tenant || "default"}`;
   }
 
   function configureFarmContext() {

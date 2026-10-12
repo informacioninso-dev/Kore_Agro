@@ -10,10 +10,16 @@ from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
-from django.utils.http import url_has_allowed_host_and_scheme
+from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_POST
 from django_tenants.utils import get_public_schema_name
 
+from apps.common.security import (
+    clear_login_failures,
+    login_is_blocked,
+    register_login_failure,
+    safe_next_url,
+)
 from apps.tenants.models import Client
 
 from .forms import CapabilityDefinitionForm, OrganizationForm, ProfileDefinitionForm
@@ -33,12 +39,14 @@ def platform_superuser_required(view):
     return wrapped
 
 
+@never_cache
 def platform_login(request: HttpRequest) -> HttpResponse:
     if request.user.is_authenticated:
         if request.user.is_superuser:
             return redirect("platform:dashboard")
         raise PermissionDenied("Este panel es exclusivo para administradores de plataforma.")
 
+    username = request.POST.get("username", "")
     form = AuthenticationForm(request, data=request.POST or None)
     for field in form.fields.values():
         field.widget.attrs["class"] = "platform-input"
@@ -48,21 +56,36 @@ def platform_login(request: HttpRequest) -> HttpResponse:
     form.fields["password"].widget.attrs.update(
         {"placeholder": "Contraseña", "autocomplete": "current-password"}
     )
-    if request.method == "POST" and form.is_valid():
-        user = form.get_user()
-        if not user.is_superuser:
-            form.add_error(None, "Este usuario no administra la plataforma.")
-        else:
-            login(request, user)
-            next_url = request.POST.get("next", "")
-            if not url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}):
-                next_url = reverse("platform:dashboard")
-            return redirect(next_url)
+    status = 200
+    if request.method == "POST":
+        if login_is_blocked(request, username):
+            form.add_error(None, "Demasiados intentos. Espera unos minutos antes de reintentar.")
+            status = 429
+        elif form.is_valid():
+            user = form.get_user()
+            if not user.is_superuser:
+                form.add_error(None, "Credenciales no validas para este acceso.")
+                if register_login_failure(request, username):
+                    status = 429
+            else:
+                login(request, user)
+                clear_login_failures(request, username)
+                return redirect(
+                    safe_next_url(
+                        request,
+                        request.POST.get("next"),
+                        reverse("platform:dashboard"),
+                    )
+                )
+        elif register_login_failure(request, username):
+            form.add_error(None, "Demasiados intentos. Espera unos minutos antes de reintentar.")
+            status = 429
 
     return render(
         request,
         "platform/login.html",
         {"form": form, "next": request.GET.get("next", "")},
+        status=status,
     )
 
 

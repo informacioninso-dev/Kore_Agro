@@ -12,7 +12,7 @@ from apps.finance.tasks import close_operating_periods
 from apps.health.services import record_treatment
 from apps.herd.models import Animal
 from apps.inventory.models import InventoryMovement, StockLot
-from apps.inventory.services import adjust_stock, receive_input
+from apps.inventory.services import adjust_stock, consume_input, receive_input
 from apps.milk.models import MilkingSession, MilkYield
 from apps.milk.services import MilkRecord, register_milking_detailed
 from apps.sync.services import ActionEventMessage, process_action_event
@@ -58,6 +58,57 @@ def test_input_receipt_feeds_stock_without_touching_the_pnl():
         ).count() == 1
         assert CostAllocation.objects.count() == 0
         assert pnl.costs == Decimal("0")
+
+
+@pytest.mark.django_db(transaction=True)
+def test_inventory_consumes_expiring_lot_before_lot_without_expiry():
+    tenant = create_tenant("fifoexpiry")
+    with tenant_context(tenant):
+        farm, group, animal, feed, _ = seed_farm()
+        expiring_lot = StockLot.objects.create(
+            farm=farm,
+            input=feed,
+            lot_code="VENCE-PRIMERO",
+            expires_on=timezone.localdate() + timedelta(days=5),
+            quantity_on_hand=Decimal("3"),
+            unit_cost=Decimal("30"),
+        )
+
+        result = consume_input(
+            farm=farm,
+            input_=feed,
+            quantity=Decimal("4"),
+            occurred_at=timezone.now(),
+            animal=animal,
+        )
+
+        expiring_lot.refresh_from_db()
+        undated_lot = StockLot.objects.get(farm=farm, input=feed, lot_code="T1")
+        allocation = CostAllocation.objects.get(inventory_movement_id=result.movement_ids[0])
+
+        assert expiring_lot.quantity_on_hand == Decimal("0")
+        assert undated_lot.quantity_on_hand == Decimal("9.000")
+        assert result.total_cost == Decimal("108.5000")
+        assert allocation.group == group
+
+
+@pytest.mark.django_db(transaction=True)
+def test_milking_rejects_animal_from_another_farm():
+    tenant = create_tenant("milkfarm")
+    with tenant_context(tenant):
+        farm, _, _, _, _ = seed_farm()
+        other_farm = farm.__class__.objects.create(name="Hacienda ajena", code="AJENA-MILK")
+        other_animal = Animal.objects.create(farm=other_farm, tag="AJENA-01")
+
+        with pytest.raises(ValueError, match="does not belong"):
+            register_milking_detailed(
+                farm=farm,
+                milking_date=timezone.localdate(),
+                shift=MilkingSession.Shift.TOTAL_DAY,
+                records=[MilkRecord(animal=other_animal, liters=Decimal("5"))],
+            )
+
+        assert MilkingSession.objects.count() == 0
 
 
 @pytest.mark.django_db(transaction=True)

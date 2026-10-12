@@ -62,6 +62,7 @@ INSTALLED_APPS = list(SHARED_APPS) + [app for app in TENANT_APPS if app not in S
 MIDDLEWARE = [
     "django_tenants.middleware.main.TenantMainMiddleware",
     "django.middleware.security.SecurityMiddleware",
+    "apps.common.security.SecurityHeadersMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -126,8 +127,19 @@ STORAGES = {
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=[])
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = "Lax"
+CSRF_COOKIE_SAMESITE = "Lax"
+DATA_UPLOAD_MAX_MEMORY_SIZE = env.int("DATA_UPLOAD_MAX_MEMORY_SIZE", default=1_048_576)
+DATA_UPLOAD_MAX_NUMBER_FIELDS = env.int("DATA_UPLOAD_MAX_NUMBER_FIELDS", default=1_000)
 LOGIN_URL = "identity:login"
 LOGIN_REDIRECT_URL = "/"
+
+LOGIN_FAILURE_LIMIT = env.int("LOGIN_FAILURE_LIMIT", default=5)
+LOGIN_IP_FAILURE_LIMIT = env.int("LOGIN_IP_FAILURE_LIMIT", default=25)
+LOGIN_FAILURE_WINDOW_SECONDS = env.int("LOGIN_FAILURE_WINDOW_SECONDS", default=300)
+LOGIN_LOCKOUT_SECONDS = env.int("LOGIN_LOCKOUT_SECONDS", default=900)
+KORE_MAX_FIELD_DEVICES_PER_USER = env.int("KORE_MAX_FIELD_DEVICES_PER_USER", default=5)
 
 CELERY_BROKER_URL = env("REDIS_URL")
 CELERY_RESULT_BACKEND = env("REDIS_URL")
@@ -153,6 +165,9 @@ EXTERNAL_INFO_WEATHER_CACHE_SECONDS = env.int(
 EXTERNAL_INFO_SANITARY_CACHE_SECONDS = env.int(
     "EXTERNAL_INFO_SANITARY_CACHE_SECONDS", default=21_600
 )
+EXTERNAL_INFO_ERROR_CACHE_SECONDS = env.int(
+    "EXTERNAL_INFO_ERROR_CACHE_SECONDS", default=300
+)
 OPEN_METEO_GEOCODING_URL = env(
     "OPEN_METEO_GEOCODING_URL",
     default="https://geocoding-api.open-meteo.com/v1/search",
@@ -168,4 +183,12 @@ AGROCALIDAD_CKAN_PACKAGE_URL = env(
 AGROCALIDAD_VACCINATION_DATASET_ID = env(
     "AGROCALIDAD_VACCINATION_DATASET_ID",
     default="datos-vacunacion-fiebre-aftosa-mas-rabia",
+)
+EXTERNAL_INFO_ALLOWED_HOSTS = env.list(
+    "EXTERNAL_INFO_ALLOWED_HOSTS",
+    default=[
+        "api.open-meteo.com",
+        "geocoding-api.open-meteo.com",
+        "datosabiertos.gob.ec",
+    ],
 )

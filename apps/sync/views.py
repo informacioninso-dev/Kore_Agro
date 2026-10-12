@@ -2,8 +2,10 @@ from django.conf import settings
 from django.http import FileResponse
 from django.shortcuts import render
 from django.templatetags.static import static
+from django.views.decorators.csrf import ensure_csrf_cookie
 
 
+@ensure_csrf_cookie
 def field_app(request):
     return render(
         request,
@@ -13,6 +15,7 @@ def field_app(request):
             "manifest_url": "/field/manifest.webmanifest",
             "app_js_url": static("field/js/app.js"),
             "app_css_url": static("field/css/app.css"),
+            "storage_scope": f"{request.tenant.schema_name}-{request.user.pk}",
         },
     )
 

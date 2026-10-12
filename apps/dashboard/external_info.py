@@ -11,10 +11,11 @@ from decimal import Decimal, InvalidOperation
 from hashlib import sha256
 from io import BytesIO
 from urllib.error import HTTPError, URLError
-from urllib.parse import urlencode
-from urllib.request import Request, urlopen
-from xml.etree import ElementTree
+from urllib.parse import urlencode, urljoin, urlparse
+from urllib.request import HTTPRedirectHandler, Request, build_opener
 
+from defusedxml import ElementTree
+from defusedxml.common import DefusedXmlException
 from django.conf import settings
 from django.core.cache import cache
 from django.utils import timezone
@@ -65,12 +66,40 @@ class ExternalProviderError(Exception):
     """A recoverable error returned by an external information provider."""
 
 
+def _validate_external_url(url: str) -> None:
+    try:
+        parsed = urlparse(url)
+        port = parsed.port
+    except ValueError as exc:
+        raise ExternalProviderError("La fuente externa tiene una direccion invalida.") from exc
+    hostname = (parsed.hostname or "").lower().rstrip(".")
+    allowed_hosts = {host.lower().rstrip(".") for host in settings.EXTERNAL_INFO_ALLOWED_HOSTS}
+    allowed = any(hostname == host or hostname.endswith(f".{host}") for host in allowed_hosts)
+    if (
+        parsed.scheme != "https"
+        or not hostname
+        or parsed.username
+        or parsed.password
+        or port not in (None, 443)
+        or not allowed
+    ):
+        raise ExternalProviderError("La fuente externa no esta autorizada.")
+
+
+class _SafeExternalRedirectHandler(HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        target = urljoin(req.full_url, newurl)
+        _validate_external_url(target)
+        return super().redirect_request(req, fp, code, msg, headers, target)
+
+
 def _cache_key(prefix: str, *parts: object) -> str:
     raw = "|".join(str(part) for part in parts)
     return f"external-info:{prefix}:{sha256(raw.encode()).hexdigest()}"
 
 
 def _request_bytes(url: str, *, max_bytes: int) -> bytes:
+    _validate_external_url(url)
     request = Request(
         url,
         headers={
@@ -79,7 +108,8 @@ def _request_bytes(url: str, *, max_bytes: int) -> bytes:
         },
     )
     try:
-        with urlopen(request, timeout=settings.EXTERNAL_INFO_HTTP_TIMEOUT) as response:
+        opener = build_opener(_SafeExternalRedirectHandler())
+        with opener.open(request, timeout=settings.EXTERNAL_INFO_HTTP_TIMEOUT) as response:
             payload = response.read(max_bytes + 1)
     except (HTTPError, URLError, TimeoutError, OSError) as exc:
         raise ExternalProviderError("La fuente externa no respondio a tiempo.") from exc
@@ -388,7 +418,14 @@ def _xlsx_sheets(payload: bytes) -> dict[str, list[list[str]]]:
             return sheets
     except ExternalProviderError:
         raise
-    except (IndexError, KeyError, ValueError, zipfile.BadZipFile, ElementTree.ParseError) as exc:
+    except (
+        DefusedXmlException,
+        ElementTree.ParseError,
+        IndexError,
+        KeyError,
+        ValueError,
+        zipfile.BadZipFile,
+    ) as exc:
         raise ExternalProviderError("El archivo sanitario no tiene un formato compatible.") from exc
 
 
@@ -437,6 +474,11 @@ def _summarize_vaccination_file(payload: bytes) -> dict:
 
 
 def _latest_vaccination_resource() -> tuple[dict, dict]:
+    key = _cache_key("vaccination-package", settings.AGROCALIDAD_VACCINATION_DATASET_ID)
+    cached = cache.get(key)
+    if cached is not None:
+        return cached
+
     package = _request_json(
         settings.AGROCALIDAD_CKAN_PACKAGE_URL,
         {"id": settings.AGROCALIDAD_VACCINATION_DATASET_ID},
@@ -451,7 +493,9 @@ def _latest_vaccination_resource() -> tuple[dict, dict]:
     if not resources:
         raise ExternalProviderError("Agrocalidad no publico un corte sanitario procesable.")
     resource = max(resources, key=lambda row: row.get("last_modified") or row.get("created") or "")
-    return package, resource
+    result = (package, resource)
+    cache.set(key, result, settings.EXTERNAL_INFO_SANITARY_CACHE_SECONDS)
+    return result
 
 
 def _resource_totals(resource: dict) -> dict:
@@ -514,6 +558,18 @@ def get_vaccination_summary(farm: Farm) -> dict:
 
 
 def get_external_information(farm: Farm) -> dict:
+    key = _cache_key(
+        "farm-summary",
+        getattr(farm, "pk", None),
+        getattr(farm, "province", ""),
+        getattr(farm, "canton", ""),
+        getattr(farm, "parish", ""),
+        getattr(farm, "weather_location", ""),
+    )
+    cached = cache.get(key)
+    if cached is not None:
+        return cached
+
     providers = {"weather": get_weather_for_farm, "vaccination": get_vaccination_summary}
     result = {}
     with ThreadPoolExecutor(max_workers=len(providers)) as executor:
@@ -530,4 +586,14 @@ def get_external_information(farm: Farm) -> dict:
                 logger.exception("Unexpected %s external information error", name)
                 result[name] = None
                 result[f"{name}_error"] = "No fue posible actualizar esta consulta en este momento."
+    has_errors = any(result.get(f"{name}_error") for name in providers)
+    timeout = (
+        settings.EXTERNAL_INFO_ERROR_CACHE_SECONDS
+        if has_errors
+        else min(
+            settings.EXTERNAL_INFO_WEATHER_CACHE_SECONDS,
+            settings.EXTERNAL_INFO_SANITARY_CACHE_SECONDS,
+        )
+    )
+    cache.set(key, result, timeout)
     return result

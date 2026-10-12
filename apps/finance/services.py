@@ -161,6 +161,39 @@ def _build_pnl(
     )
 
 
+def _aggregate_pnl_by_entity(revenue_qs, cost_qs, milk_qs, entity_field: str):
+    """Build a complete breakdown with three aggregate queries."""
+    values: dict[UUID | None, dict[str, Decimal]] = {}
+
+    def totals_for(entity_id):
+        return values.setdefault(
+            entity_id,
+            {
+                "liters": Decimal("0"),
+                "revenue": Decimal("0"),
+                "costs": Decimal("0"),
+                "discarded_liters": Decimal("0"),
+                "discarded_value": Decimal("0"),
+            },
+        )
+
+    for row in revenue_qs.values(entity_field).annotate(total=Sum("gross_amount")):
+        totals_for(row[entity_field])["revenue"] = _decimal(row["total"])
+    for row in cost_qs.values(entity_field).annotate(total=Sum("amount")):
+        totals_for(row[entity_field])["costs"] = _decimal(row["total"])
+    for row in milk_qs.values(entity_field).annotate(
+        total=Sum("liters"),
+        discarded=Sum("liters", filter=Q(is_discarded=True)),
+        discarded_value=Sum(_gross_value_expression(), filter=Q(is_discarded=True)),
+    ):
+        totals = totals_for(row[entity_field])
+        totals["liters"] = _decimal(row["total"])
+        totals["discarded_liters"] = _decimal(row["discarded"])
+        totals["discarded_value"] = _decimal(row["discarded_value"])
+
+    return {entity_id: _build_pnl(**totals) for entity_id, totals in values.items()}
+
+
 def _scoped_querysets(
     *,
     farm: Farm | None = None,
@@ -289,19 +322,22 @@ def get_group_pnl(
         return []
 
     groups = HerdGroup.objects.filter(farm=farm, is_active=True).order_by("name")
-    rows = [
-        PnlBreakdown(
-            entity_id=group.id,
-            label=group.name,
-            pnl=get_operating_pnl(farm=farm, group=group, start_date=start_date, end_date=end_date),
-        )
-        for group in groups
-    ]
-    unassigned_pnl = _get_unassigned_group_pnl(
+    revenue_qs, cost_qs, milk_qs = _scoped_querysets(
         farm=farm,
         start_date=start_date,
         end_date=end_date,
     )
+    pnl_by_group = _aggregate_pnl_by_entity(revenue_qs, cost_qs, milk_qs, "group_id")
+    empty_pnl = _build_pnl(liters=Decimal("0"), revenue=Decimal("0"), costs=Decimal("0"))
+    rows = [
+        PnlBreakdown(
+            entity_id=group.id,
+            label=group.name,
+            pnl=pnl_by_group.get(group.id, empty_pnl),
+        )
+        for group in groups
+    ]
+    unassigned_pnl = pnl_by_group.get(None, empty_pnl)
     if _has_activity(unassigned_pnl):
         rows.append(PnlBreakdown(entity_id=None, label="Sin asignar", pnl=unassigned_pnl))
     return rows
@@ -341,17 +377,19 @@ def get_animal_pnl(
     if group:
         animals = animals.filter(current_group=group)
 
+    revenue_qs, cost_qs, milk_qs = _scoped_querysets(
+        farm=farm,
+        group=group,
+        start_date=start_date,
+        end_date=end_date,
+    )
+    pnl_by_animal = _aggregate_pnl_by_entity(revenue_qs, cost_qs, milk_qs, "animal_id")
+    empty_pnl = _build_pnl(liters=Decimal("0"), revenue=Decimal("0"), costs=Decimal("0"))
     return [
         PnlBreakdown(
             entity_id=animal.id,
             label=f"{animal.tag} - {animal.name}" if animal.name else animal.tag,
-            pnl=get_operating_pnl(
-                farm=farm,
-                group=group,
-                animal=animal,
-                start_date=start_date,
-                end_date=end_date,
-            ),
+            pnl=pnl_by_animal.get(animal.id, empty_pnl),
         )
         for animal in animals.order_by("tag")
     ]

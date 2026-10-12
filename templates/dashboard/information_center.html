@@ -1,9 +1,11 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block title %}KORE AGRO - Informacion para decidir{% endblock %}
 
 {% block extra_head %}
-  <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+  <script defer src="{% static 'vendor/chart.umd.js' %}?v=4.4.7"></script>
+  <script defer src="{% static 'dashboard/js/weather-chart.js' %}?v=20261010-sec1"></script>
 {% endblock %}
 
 {% block content %}
@@ -156,7 +158,7 @@
   </section>
 {% endblock %}
 
-{% block extra_scripts %}
+{% block extra_scripts %}{% comment %}
   {% if weather %}
     <script>
       document.addEventListener("DOMContentLoaded", () => {
@@ -268,5 +270,5 @@
         });
       });
     </script>
-  {% endif %}
+  {% endif %}{% endcomment %}
 {% endblock %}

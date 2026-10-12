@@ -3,6 +3,7 @@ from decimal import Decimal
 from uuid import UUID
 
 from django.db import transaction
+from django.db.models import F
 from django.utils import timezone
 
 from apps.finance.models import CostAllocation
@@ -57,7 +58,7 @@ def _draw_fifo(*, farm: Farm, input_: Input, quantity: Decimal) -> list[tuple[St
     stock_lots = (
         StockLot.objects.select_for_update()
         .filter(farm=farm, input=input_, quantity_on_hand__gt=0)
-        .order_by("expires_on", "created_at")
+        .order_by(F("expires_on").asc(nulls_last=True), "created_at")
     )
 
     for stock_lot in stock_lots:
@@ -90,6 +91,14 @@ def consume_input(
 ) -> ConsumptionResult:
     if quantity <= 0:
         raise ValueError("Consumption quantity must be positive.")
+    if animal and animal.farm_id != farm.id:
+        raise ValueError("Animal does not belong to the farm.")
+    if group and group.farm_id != farm.id:
+        raise ValueError("Group does not belong to the farm.")
+    if animal and group and animal.current_group_id != group.id:
+        raise ValueError("Animal does not belong to the selected group.")
+
+    effective_group = group or (animal.current_group if animal else None)
 
     cost_date = timezone.localtime(occurred_at).date()
     movement_ids: list[UUID] = []
@@ -107,13 +116,13 @@ def consume_input(
             total_cost=line_total,
             occurred_at=occurred_at,
             animal=animal,
-            group=group,
+            group=effective_group,
             source_event_id=source_event_id,
             notes=notes,
         )
         CostAllocation.objects.create(
             farm=farm,
-            group=group,
+            group=effective_group,
             animal=animal,
             cost_type=cost_type_for_input(input_),
             cost_date=cost_date,
@@ -239,6 +248,16 @@ def adjust_stock(
     """
     if quantity_delta == 0:
         raise ValueError("Adjustment delta cannot be zero.")
+    if animal and animal.farm_id != farm.id:
+        raise ValueError("Animal does not belong to the farm.")
+    if group and group.farm_id != farm.id:
+        raise ValueError("Group does not belong to the farm.")
+    if animal and group and animal.current_group_id != group.id:
+        raise ValueError("Animal does not belong to the selected group.")
+    if stock_lot and (stock_lot.farm_id != farm.id or stock_lot.input_id != input_.id):
+        raise ValueError("Stock lot does not belong to the selected farm and input.")
+
+    effective_group = group or (animal.current_group if animal else None)
 
     occurred_at = occurred_at or timezone.now()
     cost_date = timezone.localtime(occurred_at).date()
@@ -252,7 +271,7 @@ def adjust_stock(
             occurred_at=occurred_at,
             stock_lot=stock_lot,
             animal=animal,
-            group=group,
+            group=effective_group,
             source_event_id=source_event_id,
             notes=notes,
         )
@@ -278,13 +297,13 @@ def adjust_stock(
             total_cost=-line_total,
             occurred_at=occurred_at,
             animal=animal,
-            group=group,
+            group=effective_group,
             source_event_id=source_event_id,
             notes=notes,
         )
         CostAllocation.objects.create(
             farm=farm,
-            group=group,
+            group=effective_group,
             animal=animal,
             cost_type=CostAllocation.CostType.SHRINKAGE,
             cost_date=cost_date,
@@ -318,7 +337,7 @@ def _adjust_up(
     target = stock_lot or (
         StockLot.objects.select_for_update()
         .filter(farm=farm, input=input_, is_active=True)
-        .order_by("expires_on", "created_at")
+        .order_by(F("expires_on").asc(nulls_last=True), "created_at")
         .first()
     )
     if target is None:

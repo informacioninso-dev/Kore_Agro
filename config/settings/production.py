@@ -17,6 +17,14 @@ SECURE_HSTS_SECONDS = 31_536_000
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
 
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": env("REDIS_URL"),  # noqa: F405
+        "OPTIONS": {"socket_connect_timeout": 2, "socket_timeout": 2},
+    }
+}
+
 DATABASES["default"]["CONN_MAX_AGE"] = 60  # noqa: F405
 DATABASES["default"]["CONN_HEALTH_CHECKS"] = True  # noqa: F405
 

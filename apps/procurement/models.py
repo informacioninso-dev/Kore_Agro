@@ -1,4 +1,4 @@
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
@@ -15,7 +15,7 @@ MONEY_QUANTUM = Decimal("0.0001")
 
 
 def money(value: Decimal) -> Decimal:
-    return value.quantize(MONEY_QUANTUM)
+    return value.quantize(MONEY_QUANTUM, rounding=ROUND_HALF_UP)
 
 
 class PurchaseOrder(TenantModel):

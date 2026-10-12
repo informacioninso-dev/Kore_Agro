@@ -145,6 +145,7 @@ def test_vaccination_workbook_is_aggregated_by_province_and_canton():
 
 
 def test_latest_vaccination_resource_recognizes_ckan_cd_filename():
+    cache.clear()
     package = {
         "result": {
             "title": "Datos de vacunacion",
@@ -167,13 +168,17 @@ def test_latest_vaccination_resource_recognizes_ckan_cd_filename():
         }
     }
 
-    with patch("apps.dashboard.external_info._request_json", return_value=package):
+    with patch("apps.dashboard.external_info._request_json", return_value=package) as request_json:
         _, resource = _latest_vaccination_resource()
+        _, cached_resource = _latest_vaccination_resource()
 
     assert resource["id"] == "data"
+    assert cached_resource["id"] == "data"
+    request_json.assert_called_once()
 
 
 def test_external_information_keeps_working_when_providers_fail():
+    cache.clear()
     farm = SimpleNamespace(province="Pichincha", canton="Quito", parish="Tumbaco")
     with (
         patch(
@@ -186,11 +191,13 @@ def test_external_information_keeps_working_when_providers_fail():
         ),
     ):
         result = get_external_information(farm)
+        cached_result = get_external_information(farm)
 
     assert result["weather"] is None
     assert result["weather_error"] == "Clima no disponible."
     assert result["vaccination"] is None
     assert result["vaccination_error"] == "Datos sanitarios no disponibles."
+    assert cached_result == result
 
 
 @pytest.mark.django_db(transaction=True)

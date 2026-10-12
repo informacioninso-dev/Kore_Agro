@@ -10,7 +10,11 @@
     <link rel="stylesheet" href="{{ app_css_url }}">
     <title>KORE AGRO Campo</title>
   </head>
-  <body>
+  <body
+    data-bootstrap-url="/api/field/bootstrap"
+    data-sync-url="/api/sync/events"
+    data-service-worker-url="{{ service_worker_url }}"
+    data-storage-scope="{{ storage_scope }}">
     <header class="topbar">
       <div>
         <span class="brand">KORE AGRO · Campo</span>
@@ -311,13 +315,6 @@
       </section>
     </main>
 
-    <script>
-      window.KORE_FIELD_CONFIG = {
-        bootstrapUrl: "/api/field/bootstrap",
-        syncUrl: "/api/sync/events",
-        serviceWorkerUrl: "{{ service_worker_url }}"
-      };
-    </script>
     <script src="{{ app_js_url }}" defer></script>
   </body>
 </html>

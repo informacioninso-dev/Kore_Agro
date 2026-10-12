@@ -3,10 +3,13 @@ from decimal import Decimal
 from uuid import uuid4
 
 import pytest
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 from django_tenants.utils import tenant_context
 
 from apps.finance.services import (
+    get_animal_pnl,
     get_cost_breakdown,
     get_daily_pnl,
     get_event_trace,
@@ -101,6 +104,35 @@ def test_finance_engine_segments_pnl_by_group_and_animal():
         assert animal_pnl.costs == Decimal("37.0000")
         assert second_group_pnl.liters == Decimal("7")
         assert second_group_pnl.costs == Decimal("0")
+
+
+@pytest.mark.django_db(transaction=True)
+def test_financial_breakdowns_use_constant_query_counts():
+    tenant = create_tenant("finqueries")
+
+    with tenant_context(tenant):
+        farm, group, _, _, _ = seed_farm()
+        for index in range(8):
+            Animal.objects.create(
+                farm=farm,
+                current_group=group,
+                tag=f"Q{index:03d}",
+                status=Animal.Status.LACTATING,
+            )
+
+        with CaptureQueriesContext(connection) as animal_queries:
+            assert len(get_animal_pnl(farm=farm)) == 9
+        with CaptureQueriesContext(connection) as group_queries:
+            assert len(get_group_pnl(farm=farm)) == 1
+
+        business_animal_queries = [
+            query for query in animal_queries if not query["sql"].startswith("SET search_path")
+        ]
+        business_group_queries = [
+            query for query in group_queries if not query["sql"].startswith("SET search_path")
+        ]
+        assert len(business_animal_queries) == 4
+        assert len(business_group_queries) == 4
 
 
 @pytest.mark.django_db(transaction=True)

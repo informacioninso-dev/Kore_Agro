@@ -19,7 +19,7 @@ class ActionEventSchema(Schema):
 
 
 class ActionQueueSchema(Schema):
-    events: list[ActionEventSchema]
+    events: list[ActionEventSchema] = Field(min_length=1, max_length=100)
 
 
 class EventAckSchema(Schema):

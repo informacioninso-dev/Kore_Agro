@@ -71,6 +71,8 @@ def register_milking_detailed(
         raise ValueError("Milking requires at least one record.")
 
     price = unit_price if unit_price is not None else farm.default_milk_price
+    if price < 0:
+        raise ValueError("Milk unit price cannot be negative.")
     session = MilkingSession.objects.create(
         farm=farm,
         milking_date=milking_date,
@@ -87,6 +89,10 @@ def register_milking_detailed(
             raise ValueError("Milk liters must be positive.")
         if not record.animal and not record.group:
             raise ValueError("Milk record requires either animal or group.")
+        if record.animal and record.animal.farm_id != farm.id:
+            raise ValueError("Animal does not belong to the farm.")
+        if record.group and record.group.farm_id != farm.id:
+            raise ValueError("Group does not belong to the farm.")
 
         group = record.group or (record.animal.current_group if record.animal else None)
         discard_reason = _discard_reason(record=record, milking_date=milking_date)

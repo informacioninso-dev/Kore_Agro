@@ -40,15 +40,17 @@ services:
         condition: service_healthy
     security_opt:
       - no-new-privileges:true
+    cap_drop:
+      - ALL
     logging: *default-logging
     restart: "no"
 
   web:
     build: .
     env_file: ${KORE_ENV_FILE:-.env.production}
-    command: gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3 --access-logfile - --error-logfile -
+    command: gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3 --timeout 60 --limit-request-line 4094 --access-logfile - --error-logfile -
     ports:
-      - "${WEB_PORT:-8000}:8000"
+      - "${WEB_BIND_ADDRESS:-127.0.0.1}:${WEB_PORT:-8000}:8000"
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -57,6 +59,11 @@ services:
     init: true
     security_opt:
       - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
     healthcheck:
       test:
         - CMD
@@ -87,6 +94,11 @@ services:
     init: true
     security_opt:
       - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
     stop_grace_period: 30s
     logging: *default-logging
     restart: unless-stopped

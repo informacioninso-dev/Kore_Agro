@@ -14,6 +14,7 @@ from apps.procurement.models import (
     PurchaseInvoice,
     PurchaseOrder,
     PurchaseOrderLine,
+    money,
 )
 from apps.procurement.services import (
     approve_purchase_order,
@@ -39,6 +40,10 @@ def _supplier(**overrides) -> Counterparty:
     }
     values.update(overrides)
     return Counterparty.objects.create(**values)
+
+
+def test_money_rounds_midpoints_away_from_zero():
+    assert money(Decimal("1.23445")) == Decimal("1.2345")
 
 
 @pytest.mark.django_db(transaction=True)
