@@ -9,10 +9,10 @@
   </header>
   <form method="post" class="platform-catalog-form">
     {% csrf_token %}
-    {% if form.non_field_errors %}<div class="platform-form-error">{{ form.non_field_errors }}</div>{% endif %}
+    {% if form.non_field_errors %}<div class="platform-form-error" role="alert">{{ form.non_field_errors }}</div>{% endif %}
     {% for field in form %}
       {% if field.field.widget.input_type == 'checkbox' and field.field.widget.allow_multiple_selected %}
-        <div class="platform-choice-block"><span>{{ field.label }}</span>{{ field }}{% for error in field.errors %}<em>{{ error }}</em>{% endfor %}</div>
+        <div class="platform-choice-block"><span>{{ field.label }}</span>{{ field }}{% for error in field.errors %}<em role="alert">{{ error }}</em>{% endfor %}</div>
       {% else %}
         {% include "platform/_field.html" with field=field %}
       {% endif %}

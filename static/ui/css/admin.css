@@ -19,7 +19,7 @@
 .kore-main table td { color: var(--kore-ink); }
 .kore-page-heading { margin-bottom: 1.5rem; }
 .kore-page-heading .eyebrow { color: var(--kore-leaf-dark); font-size: .75rem; font-weight: 700; text-transform: uppercase; }
-.kore-page-heading h1 { color: var(--kore-ink); font-family: var(--kore-font-family); font-size: clamp(2rem, 4vw, 2.8rem); font-weight: 700; margin: .3rem 0; }
+.kore-page-heading h1 { color: var(--kore-ink); font-family: var(--kore-font-family); font-size: 2.8rem; font-weight: 700; margin: .3rem 0; }
 .kore-page-heading p { color: var(--kore-muted); margin: 0; max-width: 44rem; }
 .kore-info-grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); }
 .kore-info-card { background: var(--kore-surface); border: 1px solid var(--kore-line); border-radius: 8px; display: flex; flex-direction: column; gap: .8rem; padding: 1.25rem; }
@@ -30,7 +30,7 @@
 .kore-info-card a:hover { text-decoration: underline; }
 
 .external-heading { margin-bottom: 1rem; }
-.external-context { align-items: center; background: #eef2e8; border-left: 4px solid var(--kore-leaf); display: flex; gap: 18px; justify-content: space-between; margin-bottom: 12px; padding: 12px 16px; }
+.external-context { align-items: center; background: #eef2e8; border: 1px solid #c6d3bd; display: flex; gap: 18px; justify-content: space-between; margin-bottom: 12px; padding: 12px 16px; }
 .external-context div { display: grid; gap: 2px; }
 .external-context span { color: var(--kore-muted); font-size: .75rem; font-weight: 700; text-transform: uppercase; }
 .external-context strong { color: var(--kore-ink); font-size: .95rem; }
@@ -52,9 +52,9 @@
 .weather-summary span, .sanitary-grid span { font-weight: 700; text-transform: uppercase; }
 .weather-summary strong { color: var(--kore-ink); display: block; font-size: 1.5rem; margin: 7px 0 4px; }
 .weather-alerts { display: grid; gap: 8px; margin: 14px 0; }
-.weather-alerts article { align-items: baseline; border-left: 4px solid #51824a; display: grid; gap: 8px 16px; grid-template-columns: minmax(150px, 210px) 1fr; padding: 10px 14px; }
-.weather-alerts article.alert-warning { background: #fff7e2; border-left-color: var(--kore-sun); }
-.weather-alerts article.alert-danger { background: #fff0ed; border-left-color: var(--kore-danger); }
+.weather-alerts article { align-items: baseline; border: 1px solid #a9bea4; display: grid; gap: 8px 16px; grid-template-columns: minmax(150px, 210px) 1fr; padding: 10px 14px; }
+.weather-alerts article.alert-warning { background: #fff7e2; border-color: #dfbd70; }
+.weather-alerts article.alert-danger { background: #fff0ed; border-color: #dca09a; }
 .weather-alerts strong { color: var(--kore-ink); font-size: .9rem; }
 .weather-alerts span { color: var(--kore-muted); font-size: .875rem; }
 .weather-chart-panel { background: var(--kore-surface); border: 1px solid var(--kore-line); border-radius: 8px; margin-top: 14px; padding: 16px; }
@@ -78,8 +78,8 @@
 .external-attribution a, .external-empty a, .dataset-note a { color: var(--kore-leaf-dark); font-weight: 750; text-decoration: none; }
 .external-attribution a:hover, .external-empty a:hover, .dataset-note a:hover { text-decoration: underline; }
 .sanitary-grid { display: grid; gap: 12px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.sanitary-grid article:first-child { border-top: 3px solid var(--kore-leaf); }
-.sanitary-grid article:last-child { border-top: 3px solid #397995; }
+.sanitary-grid article:first-child { border-color: #9db897; }
+.sanitary-grid article:last-child { border-color: #99b8c5; }
 .sanitary-grid strong { color: var(--kore-ink); display: block; font-size: 1.8rem; margin: 9px 0 3px; }
 .sanitary-grid p { color: var(--kore-muted); font-size: .82rem; margin: 12px 0 0; }
 .dataset-note { align-items: center; background: #eef2e8; border-radius: 6px; display: flex; gap: 18px; margin-top: 12px; padding: 12px 14px; }
@@ -93,7 +93,7 @@
 .official-sources { padding-bottom: 0; }
 
 @media (max-width: 900px) {
-  .kore-page-heading h1 { font-size: clamp(1.8rem, 7vw, 2.35rem); }
+  .kore-page-heading h1 { font-size: 2.2rem; }
   .weather-summary, .week-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 

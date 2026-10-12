@@ -18,6 +18,9 @@ separada ni el limite futuro de la plataforma.
 - [Sincronizacion offline](#modelo-de-sincronizacion-offline).
 - [Roadmap de plataforma](#roadmap-de-la-plataforma).
 - [Desarrollo local](#desarrollo-local).
+- [Indice de documentacion](docs/README.md).
+- [Reglas para agentes y colaboradores](AGENTS.md).
+- [Memoria permanente](MEMORY.md).
 
 ## Vision Del Producto
 
@@ -304,7 +307,7 @@ apps/
 | Personal, tareas, jornadas y costo de mano de obra | Implementado en alcance operativo inicial |
 | Inventario, recepcion de insumos, consumos, ajustes y kardex | Implementado |
 | P&L por hacienda, lote y animal | Implementado |
-| PWA offline, cola FIFO, idempotencia y conflictos | Implementado; recepciones ligadas a orden aprobada |
+| PWA offline, cola FIFO, idempotencia y conflictos | Implementado e instalable; recepciones ligadas a orden aprobada |
 | Panel superadmin, perfiles y registro de capacidades | Implementado en esquema publico |
 | Menus, rutas, API y PWA gobernados por capacidades | Implementado |
 | Auditoria transversal de actor, cambios, ruta y evento offline | Implementado |
@@ -312,6 +315,7 @@ apps/
 | Recepcion agroproductiva, calidad, lotes y liquidaciones | Por construir |
 | Procesamiento, despacho y comercializacion general | Por construir |
 | Proveedores, aprobaciones, recepciones, facturas, pagos y devoluciones | Implementado |
+| Factura de leche y guia de movilizacion | Borradores implementados; envio SRI requiere certificado y adaptador autorizado |
 
 ### Panel Superadmin
 
@@ -588,6 +592,7 @@ Base de datos local:
 poetry run python -c "import psycopg; conn=psycopg.connect('postgresql://postgres:postgres@localhost:5432/postgres', autocommit=True); conn.execute('CREATE DATABASE kore_agro'); conn.close()"
 poetry run python manage.py migrate_schemas --shared
 poetry run python manage.py bootstrap_demo_tenant
+poetry run python manage.py check_pilot_readiness --domain localhost
 poetry run python manage.py bootstrap_platform --username superadmin --password "cambiar-esta-clave"
 ```
 
@@ -616,6 +621,7 @@ URLs locales:
 
 - Liveness: `GET /health/`.
 - Readiness de PostgreSQL: `GET /readiness/`.
+- Certificacion del tenant piloto: `python manage.py check_pilot_readiness --domain <dominio>`.
 - Para produccion, configurar `DJANGO_SETTINGS_MODULE=config.settings.production`, un
   `SECRET_KEY` seguro, hosts permitidos, HTTPS, PostgreSQL y Redis administrados.
 - Ejecutar un worker con `poetry run celery -A config.celery worker -l info` cuando Redis
@@ -687,6 +693,9 @@ Estado actual:
   trabajador de campo recibe ordenes autorizadas desde la PWA.
 - Configuracion autoservicio aplicada: el propietario mantiene organizacion, usuarios, roles
   y asignaciones; el administrador actualiza los parametros operativos de la hacienda.
+- Revision UX aplicada al acceso, panel administrativo y PWA: navegacion priorizada,
+  controles tactiles, estados accesibles y confirmacion de acciones destructivas.
+- Preparacion de piloto verificable con `check_pilot_readiness`; suite actual: 103 pruebas.
 
 ## Eventos Con Impacto Economico
 

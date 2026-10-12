@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 import pytest
@@ -20,15 +21,22 @@ def _template_text(relative_path: str) -> str:
 
 def test_tenant_shell_has_tablet_mobile_and_secondary_navigation():
     stylesheet = _static_text("ui/css/shell.css")
+    behavior = _static_text("ui/js/app.js")
     template = _template_text("base.html")
 
     assert "@media (min-width: 901px) and (max-width: 1180px)" in stylesheet
     assert "@media (max-width: 900px)" in stylesheet
     assert "env(safe-area-inset-bottom)" in stylesheet
     assert 'class="kore-mobile-more"' in template
+    assert 'class="kore-skip-link"' in template
+    assert 'class="kore-nav-more"' in template
+    assert "prefers-reduced-motion: reduce" in stylesheet
     assert "dashboard:tenant_settings" in template
     assert "identity:logout" in template
-    assert template.count("'/cumplimiento/' in request.path") == 2
+    assert template.count('href="/cumplimiento/"') == 2
+    assert 'ui/js/app.js' in template
+    assert 'form[data-confirm]' in behavior
+    assert "window.confirm(message)" in behavior
 
 
 def test_platform_core_tables_have_mobile_card_labels():
@@ -36,6 +44,7 @@ def test_platform_core_tables_have_mobile_card_labels():
     dashboard = _template_text("platform/dashboard.html")
     organizations = _template_text("platform/organization_list.html")
     catalog = _template_text("platform/catalog.html")
+    base = _template_text("platform/base.html")
 
     assert "@media (max-width: 640px)" in stylesheet
     assert "content: attr(data-label)" in stylesheet
@@ -45,16 +54,46 @@ def test_platform_core_tables_have_mobile_card_labels():
     assert 'data-label="Accion"' in organizations
     assert catalog.count('class="platform-responsive-table"') == 2
     assert 'data-label="Capacidad"' in catalog
+    assert 'class="platform-skip-link"' in base
+    assert 'id="platform-main"' in base
+    assert 'aria-current="page"' in base
 
 
 def test_field_ui_has_touch_and_landscape_adaptations():
     stylesheet = _static_text("field/css/app.css")
+    manifest = json.loads(_static_text("field/manifest.webmanifest"))
     service_worker = _static_text("field/sw.js")
+    template = _template_text("field/app.html")
+    script = _static_text("field/js/app.js")
 
     assert "min-height: 3rem" in stylesheet
     assert "env(safe-area-inset-top)" in stylesheet
     assert "@media (orientation: landscape) and (max-height: 600px)" in stylesheet
-    assert 'const CACHE_NAME = "kore-agro-field-v13"' in service_worker
+    assert "prefers-reduced-motion: reduce" in stylesheet
+    assert 'const CACHE_NAME = "kore-agro-field-v' in service_worker
+    assert manifest["id"] == "/field/"
+    assert manifest["scope"] == "/field/"
+    assert manifest["lang"] == "es-EC"
+    assert manifest["icons"][0]["src"] == "/static/field/icon.svg"
+    assert "/static/field/icon.svg" in service_worker
+    assert 'rel="icon"' in template
+    assert 'id="actionFeedback"' in template
+    assert 'id="moreRecords"' in template
+    assert 'class="tabs"' not in template
+    assert "async function queueFormEvent" in script
+    assert 'form.setAttribute("aria-busy", "true")' in script
+    assert "confirmMessage" in script
+    assert 'window.matchMedia("(prefers-reduced-motion: reduce)")' in script
+
+
+def test_login_pages_have_clear_metadata_and_primary_actions():
+    tenant_login = _template_text("identity/login.html")
+    platform_login = _template_text("platform/login.html")
+
+    assert "Acceso seguro a la operación diaria" in tenant_login
+    assert ">Entrar a mi finca</button>" in tenant_login
+    assert "Acceso interno a la administración" in platform_login
+    assert "Superadministración" in platform_login
 
 
 @pytest.mark.django_db(transaction=True)

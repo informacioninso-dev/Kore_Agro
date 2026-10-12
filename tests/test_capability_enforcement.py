@@ -33,7 +33,7 @@ def test_tenant_menu_and_route_follow_enabled_capabilities():
 
     assert home_response.status_code == 200
     assert "Pesos y crecimiento" not in home_response.content.decode()
-    assert "Produccion y cuentas" in home_response.content.decode()
+    assert "Producción y cuentas" in home_response.content.decode()
     assert growth_response.status_code == 403
     assert "no esta habilitado" in growth_response.content.decode()
     assert finance_response.status_code == 200

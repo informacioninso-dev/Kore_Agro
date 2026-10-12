@@ -6,6 +6,6 @@
       <span>{{ field.label }}</span>{{ field }}
     {% endif %}
     {% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}
-    {% for error in field.errors %}<em>{{ error }}</em>{% endfor %}
+    {% for error in field.errors %}<em role="alert">{{ error }}</em>{% endfor %}
   </label>
 {% endif %}

@@ -36,8 +36,9 @@ build-backend = "poetry.core.masonry.api"
 DJANGO_SETTINGS_MODULE = "config.settings.test"
 python_files = ["tests.py", "test_*.py", "*_tests.py"]
 testpaths = ["tests"]
-norecursedirs = [".venv", ".pytest_cache", ".ruff_cache", "pytest-cache-files-*"]
-addopts = "--strict-markers --disable-warnings"
+norecursedirs = [".venv", ".pytest", ".pytest_cache", ".ruff_cache", "pytest-cache-files-*"]
+cache_dir = "tests/.pytest/cache"
+addopts = "--strict-markers --disable-warnings --basetemp=tests/.pytest/temp"
 
 [tool.ruff]
 line-length = 100

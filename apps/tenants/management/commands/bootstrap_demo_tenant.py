@@ -32,8 +32,9 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         schema_name = options["schema"]
         domain_name = options["domain"]
+        trial_ends_on = timezone.localdate() + timedelta(days=30)
 
-        tenant, _ = Client.objects.get_or_create(
+        tenant, created = Client.objects.get_or_create(
             schema_name=schema_name,
             defaults={
                 "name": "Hacienda Demo KORE",
@@ -41,11 +42,16 @@ class Command(BaseCommand):
                 "ruc": "1799999999001",
                 "province": "Pichincha",
                 "city": "Quito",
-                "paid_until": timezone.localdate() + timedelta(days=30),
+                "paid_until": trial_ends_on,
                 "on_trial": True,
             },
         )
-        Domain.objects.get_or_create(
+        if not created:
+            tenant.on_trial = True
+            tenant.paid_until = trial_ends_on
+            tenant.save(update_fields=["on_trial", "paid_until", "updated_at"])
+
+        Domain.objects.update_or_create(
             domain=domain_name,
             defaults={"tenant": tenant, "is_primary": True},
         )

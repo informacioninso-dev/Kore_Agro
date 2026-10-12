@@ -12,7 +12,7 @@
     <a class="platform-button secondary" href="{% url 'platform:organization_list' %}">Volver</a>
   </header>
 
-  {% if form.non_field_errors %}<div class="platform-form-error">{{ form.non_field_errors }}</div>{% endif %}
+  {% if form.non_field_errors %}<div class="platform-form-error" role="alert">{{ form.non_field_errors }}</div>{% endif %}
   <form method="post" class="platform-organization-form">
     {% csrf_token %}
     <section class="platform-form-section">

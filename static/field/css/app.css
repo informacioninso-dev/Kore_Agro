@@ -24,6 +24,27 @@ body {
   overscroll-behavior-y: none;
 }
 
+.skipLink {
+  position: fixed;
+  z-index: 100;
+  top: 0;
+  left: 1rem;
+  padding: 0.75rem 1rem;
+  transform: translateY(-120%);
+  background: #fff;
+  color: var(--text);
+  font-weight: 700;
+}
+
+.skipLink:focus { transform: translateY(1rem); }
+
+:where(button, input, select, summary, a):focus-visible {
+  outline: 3px solid #2563eb;
+  outline-offset: 3px;
+}
+
+#field-main:focus { outline: 0; }
+
 .topbar {
   position: sticky;
   top: 0;
@@ -46,6 +67,8 @@ body {
   font-weight: var(--kore-font-bold);
   text-transform: uppercase;
 }
+
+.topbar .brand { color: #dce9dc; }
 
 h1,
 h2 {
@@ -76,9 +99,7 @@ h2 {
   padding: 1.25rem;
   border: 1px solid #6c8951;
   border-radius: 1rem;
-  background:
-    radial-gradient(circle at 85% 15%, rgba(213, 216, 90, 0.25), transparent 26%),
-    linear-gradient(135deg, #294b30, #1b3322);
+  background: #1b3322;
 }
 
 .fieldHero h2 {
@@ -185,11 +206,39 @@ h2 {
   gap: 0.65rem;
 }
 
+.moreRecords {
+  border-top: 1px solid var(--border);
+  padding-top: 0.75rem;
+}
+
+.moreRecords summary {
+  display: flex;
+  min-height: 3rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.65rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  background: #f7f8f3;
+  color: var(--text);
+  cursor: pointer;
+  font-weight: 700;
+  list-style: none;
+}
+
+.moreRecords summary::-webkit-details-marker { display: none; }
+.moreRecords summary small { color: var(--muted); font-size: var(--kore-text-caption); font-weight: 400; text-align: right; }
+.moreRecords[open] summary { border-color: #9caf90; background: #edf3e8; }
+.secondaryActions { margin-top: 0.65rem; }
+
 .quickAction {
   display: grid;
   min-height: 7.5rem;
   padding: 0.85rem;
-  border-width: 2px;
+  border: 2px solid #b8c8ae;
+  background: #edf3e8;
+  color: var(--text);
   text-align: left;
   transition: transform 160ms ease, filter 160ms ease;
 }
@@ -199,7 +248,9 @@ h2 {
 }
 
 .quickAction.active {
-  box-shadow: 0 0 0 3px var(--panel), 0 0 0 5px var(--text);
+  border-color: var(--text);
+  outline: 3px solid #2563eb;
+  outline-offset: 2px;
 }
 
 .quickAction:active {
@@ -224,15 +275,8 @@ h2 {
   height: 2rem;
 }
 
-.quickAction.milk { background: #315c74; border-color: #78c9d9; color: #effffb; }
-.quickAction.repro { background: #70404a; border-color: #e29a91; color: #fff5e8; }
-.quickAction.health { background: #7a5732; border-color: #f3bd70; color: #fff8e7; }
-.quickAction.weight { background: #315f50; border-color: #75c6a2; color: #f0fff8; }
-.quickAction.inventory { background: #48603a; border-color: #a9c86a; color: #fbffe8; }
-.quickAction.receipt { background: #365e64; border-color: #7bc7c8; color: #f0ffff; }
-.quickAction.adjustment { background: #584d72; border-color: #b8a6df; color: #faf7ff; }
-.quickAction.expense { background: #675a30; border-color: #e4c96e; color: #fffbea; }
-.quickAction.sale { background: #743f3b; border-color: #e69a8f; color: #fff5f2; }
+.quickAction.health { border-color: #c58a49; background: #fff6e7; }
+.quickAction.sale { border-color: #c97972; background: #fff1ef; }
 
 .attentionPanel,
 .quickSection {
@@ -249,28 +293,19 @@ h2 {
 
 .attentionCard {
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: 1fr auto;
   gap: 0.65rem;
   align-items: center;
   width: 100%;
   min-height: 4.5rem;
   padding: 0.7rem;
+  color: #f7faf7;
   text-align: left;
 }
 
 .attentionCard.urgent { border-color: #f3a65d; background: #54351e; }
 .attentionCard.important { border-color: #d5d85a; background: #3a4828; }
 .attentionCard.normal { border-color: #75b3a0; background: #27443c; }
-
-.attentionSymbol {
-  display: grid;
-  width: 2rem;
-  height: 2rem;
-  place-items: center;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.13);
-  font-size: 1.1rem;
-}
 
 .attentionCard strong,
 .attentionCard small {
@@ -285,12 +320,29 @@ h2 {
   font-weight: var(--kore-font-regular);
 }
 
-.attentionArrow { color: var(--accent); font-size: 1.35rem; }
+.attentionCard small { color: #e1ebe1; }
+.attentionAction { color: #fff; font-size: var(--kore-text-small); font-weight: 700; text-decoration: underline; }
 
 .statusPanel {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 0.5rem;
+}
+
+.actionFeedback {
+  padding: 0.85rem 1rem;
+  border: 1px solid #8dad80;
+  border-radius: 0.5rem;
+  background: #edf7e9;
+  color: #20482e;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.actionFeedback.error {
+  border-color: #d69a94;
+  background: #fff1ef;
+  color: #8d2f29;
 }
 
 .statusPanel > div,
@@ -316,14 +368,6 @@ h2 {
 #networkState[data-state="online"] { color: #287347; }
 #networkState[data-state="offline"] { color: var(--danger); }
 #networkState[data-state="syncing"] { color: #8a651d; }
-
-.tabs {
-  display: flex;
-  gap: 0.5rem;
-  overflow-x: auto;
-  padding: 0.15rem 0.1rem 0.45rem;
-  scrollbar-width: thin;
-}
 
 button,
 input,
@@ -355,56 +399,15 @@ button {
   height: 1.4rem;
 }
 
-.tab {
-  display: inline-flex;
-  flex: 0 0 7.5rem;
-  align-items: center;
-  justify-content: center;
-  gap: 0.4rem;
-  min-height: 3rem;
-  padding: 0 0.6rem;
-  color: var(--muted);
-  font-size: var(--kore-text-small);
-}
-
-.tab.active {
-  border-color: var(--accent);
-  background: #fff9e9;
-  color: var(--accent);
-}
-
-.tabIcon {
-  display: grid;
-  width: 1.35rem;
-  height: 1.35rem;
-  flex: 0 0 1.35rem;
-  place-items: center;
-  font-size: 1.1rem;
-  line-height: 1;
-}
-
 .panel {
   display: none;
   padding: 1rem;
+  scroll-margin-top: 6rem;
 }
 
-.panel::before {
-  display: block;
-  margin-bottom: 0.85rem;
-  color: var(--muted);
-  font-size: var(--kore-text-small);
-  line-height: 1.4;
-}
-
-#milkPanel::before { content: "Registra los litros. El sistema calcula el valor y avisa si hay retiro de leche."; }
-#reproPanel::before { content: "Anota el evento al momento. El arete es suficiente para encontrar la vaca."; }
-#healthPanel::before { content: "Registra el tratamiento para controlar el retiro de leche y el costo."; }
-#weightPanel::before { content: "Registra el peso para calcular la ganancia diaria y detectar animales rezagados."; }
-#inventoryPanel::before { content: "Registra lo que salió de bodega para que no falte ni se pierda."; }
-#receiptPanel::before { content: "Recibe una orden aprobada. El precio y el saldo pendiente se validan al sincronizar."; }
-#adjustmentPanel::before { content: "Corrige la existencia después de un conteo físico e indica el motivo."; }
-#expensePanel::before { content: "Registra pagos operativos que no pasan por la bodega."; }
-#salePanel::before { content: "Registra el valor de la venta y retira el animal del inventario activo."; }
+.panelHeader { margin-bottom: 1rem; }
+.panelHeader h2 { color: var(--text); font-size: 1.2rem; }
+.panelHeader p { max-width: 42rem; margin: 0.35rem 0 0; color: var(--muted); font-size: var(--kore-text-small); line-height: 1.45; }
 
 .panel.active {
   display: block;
@@ -452,6 +455,12 @@ button:disabled {
   color: #fff;
 }
 
+.warning {
+  border-color: #9b5f23;
+  background: #9b5f23;
+  color: #fff;
+}
+
 .saleButton {
   border-color: #743f3b;
   background: #743f3b;
@@ -472,7 +481,7 @@ button:disabled {
 
 .queueActions { margin-top: 0.75rem; }
 
-.secondary { border-color: var(--accent); color: var(--accent); }
+.secondary { border-color: #9b5f23; color: #664019; }
 
 #queueList {
   display: grid;
@@ -533,6 +542,11 @@ button:disabled {
   .topbar { gap: 0.6rem; padding-right: 0.75rem; padding-left: 0.75rem; }
   .fieldHero { padding: 1rem; }
   .heroMark { width: 3.5rem; min-width: 3.5rem; }
+  .statusPanel { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .statusPanel > div:last-child { grid-column: 1 / -1; }
+  .statusPanel strong { overflow: visible; text-overflow: clip; white-space: normal; }
+  .moreRecords summary { align-items: flex-start; flex-direction: column; }
+  .moreRecords summary small { text-align: left; }
   .queueActions { grid-template-columns: 1fr; }
 }
 
@@ -542,4 +556,10 @@ button:disabled {
   .fieldHero p { margin-top: 0.3rem; }
   .heroMark { width: 3rem; min-width: 3rem; }
   .shell { padding-bottom: 2rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .quickAction { transition: none; }
+  .quickAction:active { transform: none; }
+  .skipLink { transition: none; }
 }

@@ -4,6 +4,7 @@ from uuid import uuid4
 
 import pytest
 from django.core.exceptions import ValidationError
+from django.test import override_settings
 from django.utils import timezone
 from django_tenants.utils import tenant_context
 
@@ -15,7 +16,7 @@ from apps.billing.services import (
 )
 from apps.milk.models import MilkingSession
 from apps.milk.services import MilkRecord, register_milking
-from tests.factories import create_tenant, seed_farm
+from tests.factories import authenticated_manager_client, create_tenant, seed_farm
 
 
 @pytest.mark.django_db(transaction=True)
@@ -87,3 +88,60 @@ def test_invoice_without_sales_cannot_be_created_or_sent_without_sri_adapter():
 
         invoice.refresh_from_db()
         assert invoice.status == MilkInvoice.Status.DRAFT
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(SRI_ADAPTER_CLASS="")
+def test_billing_dashboard_explains_when_sri_submission_is_unavailable():
+    tenant = create_tenant("billingsrioff")
+    client = authenticated_manager_client(tenant)
+
+    with tenant_context(tenant):
+        farm, _, _, _, _ = seed_farm()
+        today = timezone.localdate()
+        MilkInvoice.objects.create(
+            farm=farm,
+            buyer_ruc="1799999999001",
+            buyer_name="Planta Demo",
+            period_start=today,
+            period_end=today,
+            liters=Decimal("1"),
+            unit_price=Decimal("0.50"),
+            subtotal=Decimal("0.50"),
+            total=Decimal("0.50"),
+        )
+
+    response = client.get("/cumplimiento/")
+    html = response.content.decode()
+
+    assert response.status_code == 200
+    assert "Envío al SRI aún no configurado" in html
+    assert "Solo borrador" in html
+    assert ">Enviar al SRI</button>" not in html
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(SRI_ADAPTER_CLASS="tests.fake_sri.Adapter")
+def test_billing_dashboard_offers_submission_when_sri_adapter_is_configured():
+    tenant = create_tenant("billingsrion")
+    client = authenticated_manager_client(tenant)
+
+    with tenant_context(tenant):
+        farm, _, _, _, _ = seed_farm()
+        today = timezone.localdate()
+        MilkInvoice.objects.create(
+            farm=farm,
+            buyer_ruc="1799999999001",
+            buyer_name="Planta Demo",
+            period_start=today,
+            period_end=today,
+            liters=Decimal("1"),
+            unit_price=Decimal("0.50"),
+            subtotal=Decimal("0.50"),
+            total=Decimal("0.50"),
+        )
+
+    response = client.get("/cumplimiento/")
+
+    assert response.status_code == 200
+    assert ">Enviar al SRI</button>" in response.content.decode()

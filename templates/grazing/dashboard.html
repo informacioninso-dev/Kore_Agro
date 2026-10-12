@@ -22,10 +22,10 @@
     </form>
 
     {% if grazing_message %}
-      <div class="rounded border border-emerald-700 bg-emerald-950 px-4 py-3 text-sm text-emerald-100">{{ grazing_message }}</div>
+      <div class="rounded border border-emerald-700 bg-emerald-950 px-4 py-3 text-sm text-emerald-100" role="status">{{ grazing_message }}</div>
     {% endif %}
     {% if grazing_error %}
-      <div class="rounded border border-red-800 bg-red-950 px-4 py-3 text-sm text-red-100">{{ grazing_error }}</div>
+      <div class="rounded border border-red-800 bg-red-950 px-4 py-3 text-sm text-red-100" role="alert">{{ grazing_error }}</div>
     {% endif %}
 
     <section class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Resumen de potreros">
@@ -104,7 +104,7 @@
         <div class="overflow-x-auto">
           <table class="w-full min-w-[760px] text-left text-sm">
             <thead class="bg-neutral-900 text-xs uppercase text-neutral-500">
-              <tr><th class="px-4 py-3">Codigo</th><th>Potrero</th><th>Forraje</th><th>Area</th><th>Estado</th><th>Descanso</th><th></th></tr>
+              <tr><th class="px-4 py-3">Código</th><th>Potrero</th><th>Forraje</th><th>Área</th><th>Estado</th><th>Descanso</th><th>Acciones</th></tr>
             </thead>
             <tbody class="divide-y divide-neutral-800">
               {% for row in paddock_rows %}
@@ -117,7 +117,7 @@
                   <td>{% if row.status == 'occupied' %}En uso{% elif row.rest_days != None %}{{ row.rest_days }} dias{% if row.rest_days_remaining %} / faltan {{ row.rest_days_remaining }}{% endif %}{% else %}Sin historial{% endif %}</td>
                   <td class="flex justify-end gap-2 py-2 pr-3">
                     <a class="border border-neutral-700 px-2 py-1 text-xs text-neutral-300" href="{% url 'grazing:paddock_edit' row.paddock.id %}">Editar</a>
-                    <form method="post" action="{% url 'grazing:paddock_deactivate' row.paddock.id %}">
+                    <form method="post" action="{% url 'grazing:paddock_deactivate' row.paddock.id %}" data-confirm="¿Desactivar este potrero? Dejará de estar disponible para nuevas rotaciones.">
                       {% csrf_token %}
                       <button class="border border-red-800 px-2 py-1 text-xs text-red-300" type="submit">Desactivar</button>
                     </form>
@@ -157,7 +157,7 @@
             {% for period in recent_periods %}
               <tr><td class="px-4 py-3 font-semibold">{{ period.paddock.name }}</td><td>{{ period.group.name }}</td><td>{{ period.started_on|date:"d/m/Y" }}</td><td>{{ period.ended_on|date:"d/m/Y" }}</td><td>{{ period.occupied_days }}</td><td>{{ period.head_count }}</td><td>{% if period.entry_biomass_kg_ha %}{{ period.entry_biomass_kg_ha|floatformat:0 }}{% else %}-{% endif %} / {% if period.exit_biomass_kg_ha %}{{ period.exit_biomass_kg_ha|floatformat:0 }}{% else %}-{% endif %} kg/ha</td></tr>
             {% empty %}
-              <tr><td class="px-4 py-6 text-neutral-500" colspan="7">Aun no hay rotaciones cerradas.</td></tr>
+              <tr><td class="px-4 py-6 text-neutral-500" colspan="7">Aún no hay rotaciones cerradas.</td></tr>
             {% endfor %}
           </tbody>
         </table>

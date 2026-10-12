@@ -20,6 +20,20 @@ body { margin: 0; min-width: 320px; background: var(--platform-bg); color: var(-
 button, input, select, textarea { font: inherit; }
 a { color: inherit; }
 
+.platform-skip-link {
+  position: fixed;
+  z-index: 100;
+  top: 10px;
+  left: 10px;
+  padding: 10px 14px;
+  border-radius: 5px;
+  background: #ffffff;
+  color: var(--platform-green);
+  font-weight: 700;
+  transform: translateY(-160%);
+}
+.platform-skip-link:focus { transform: translateY(0); }
+
 .platform-layout { min-height: 100vh; }
 .platform-sidebar {
   position: fixed;
@@ -70,6 +84,7 @@ a { color: inherit; }
 .platform-button { display: inline-flex; min-height: 44px; align-items: center; justify-content: center; padding: 8px 15px; border: 1px solid transparent; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 700; text-decoration: none; }
 .platform-button.primary { background: var(--platform-green); color: #fff; }
 .platform-button.primary:hover { background: #193f2b; }
+.platform-button:focus-visible, .platform-nav a:focus-visible, .platform-table-link:focus-visible, .platform-logout:focus-visible { outline: 3px solid #2563eb; outline-offset: 3px; }
 .platform-button.secondary { border-color: #9eafa2; background: var(--platform-surface); color: var(--platform-green); }
 .platform-button.tertiary { background: transparent; color: var(--platform-muted); }
 .platform-button.full { width: 100%; }

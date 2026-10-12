@@ -1,5 +1,5 @@
 {% if form.non_field_errors %}
-  <div class="rounded border border-red-800 bg-red-950 px-3 py-2 text-sm text-red-100">
+  <div class="rounded border border-red-800 bg-red-950 px-3 py-2 text-sm text-red-100" role="alert">
     {{ form.non_field_errors }}
   </div>
 {% endif %}
@@ -7,7 +7,7 @@
 {% for field in form.hidden_fields %}{{ field }}{% endfor %}
 
 {% for field in form.visible_fields %}
-  <label class="{% if field.field.widget.input_type == 'checkbox' %}flex items-center gap-2 text-sm text-neutral-300{% else %}grid gap-1 text-xs uppercase text-neutral-500{% endif %}">
+  <label class="{% if field.field.widget.input_type == 'checkbox' %}flex items-center gap-2 text-sm text-neutral-300{% else %}grid gap-1 text-sm font-semibold text-neutral-300{% endif %}">
     {% if field.field.widget.input_type == 'checkbox' %}
       {{ field }} <span>{{ field.label }}</span>
     {% else %}
@@ -15,7 +15,7 @@
       {{ field }}
     {% endif %}
     {% if field.errors %}
-      <span class="text-xs normal-case text-red-300">{{ field.errors|striptags }}</span>
+      <span class="text-xs font-normal text-red-300" role="alert">{{ field.errors|striptags }}</span>
     {% endif %}
     {% if field.help_text %}
       <span class="text-xs font-normal normal-case text-neutral-500">{{ field.help_text }}</span>

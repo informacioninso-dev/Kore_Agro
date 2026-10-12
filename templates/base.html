@@ -8,11 +8,12 @@
     <link rel="stylesheet" href="{% static 'ui/css/tailwind.css' %}?v=20261010-perf1">
     <script defer src="{% static 'vendor/htmx.min.js' %}?v=2.0.4"></script>
     <link rel="stylesheet" href="{% static 'ui/css/typography.css' %}?v=20261001-brand1">
-    <link rel="stylesheet" href="{% static 'ui/css/shell.css' %}?v=20261001-brand3">
-    <link rel="stylesheet" href="{% static 'ui/css/admin.css' %}?v=20261001-brand2">
+    <link rel="stylesheet" href="{% static 'ui/css/shell.css' %}?v=20261012-ux1">
+    <link rel="stylesheet" href="{% static 'ui/css/admin.css' %}?v=20261012-ux1">
     {% block extra_head %}{% endblock %}
   </head>
   <body class="kore-shell antialiased">
+    <a class="kore-skip-link" href="#main-content">Ir al contenido</a>
     <div class="kore-layout">
       <header class="kore-header">
         <a class="kore-brand" href="/" aria-label="Ir al inicio de Kore Agro">
@@ -25,40 +26,19 @@
           </span>
         </a>
         <div class="kore-farm-context">
-          <span class="kore-online-dot" aria-hidden="true"></span>
-          <span>Tu jornada esta lista</span>
+          <span>Trabajo de hoy</span>
         </div>
       </header>
-      <aside class="kore-sidebar" aria-label="Navegacion principal">
+      <aside class="kore-sidebar" aria-label="Navegación principal">
         <p class="kore-nav-label">Trabajo de hoy</p>
         <nav class="kore-nav">
-          <a class="{% if request.path == '/' %}is-active{% endif %}" href="/">
+          <a class="{% if request.path == '/' %}is-active{% endif %}" href="/" {% if request.path == '/' %}aria-current="page"{% endif %}>
             <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m3 11 9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1v-9Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg><span>Tu hacienda</span>
           </a>
           {% if 'herd' in kore_capabilities or 'inventory' in kore_capabilities %}
-            <a class="{% if request.path == '/datos/' %}is-active{% endif %}" href="/datos/">
+            <a class="{% if request.path == '/datos/' or '/crecimiento/' in request.path or '/historial/' in request.path %}is-active{% endif %}" href="/datos/" {% if request.path == '/datos/' or '/crecimiento/' in request.path or '/historial/' in request.path %}aria-current="page"{% endif %}>
               <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 8c1-2 3-3 7-3s6 1 7 3l2 1-2 2v5l-2 2-2-2H9l-2 2-2-2v-5l-2-2 2-1Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M9 10h.01M16 10h.01" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg><span>{% if 'herd' in kore_capabilities and 'inventory' in kore_capabilities %}Hato y bodega{% elif 'herd' in kore_capabilities %}Hato{% else %}Bodega{% endif %}</span>
             </a>
-          {% endif %}
-          {% if 'procurement' in kore_capabilities %}
-          <a class="{% if '/compras/' in request.path %}is-active{% endif %}" href="/compras/">
-            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 7h16l-1 13H5L4 7Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M8 10V6a4 4 0 0 1 8 0v4M8 15h8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span>Proveedores y compras</span>
-          </a>
-          {% endif %}
-          {% if 'growth' in kore_capabilities %}
-          <a class="{% if '/crecimiento/' in request.path or '/historial/' in request.path %}is-active{% endif %}" href="/crecimiento/">
-            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 19h16M6 16l4-4 3 2 5-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 7h3v3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Pesos y crecimiento</span>
-          </a>
-          {% endif %}
-          {% if 'grazing' in kore_capabilities %}
-          <a class="{% if '/pastoreo/' in request.path %}is-active{% endif %}" href="/pastoreo/">
-            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 19c2-6 6-9 12-9h4c-1 6-5 9-11 9H4Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M8 19c2-3 5-5 9-7M5 7h6M8 4v6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span>Potreros y rotacion</span>
-          </a>
-          {% endif %}
-          {% if 'workforce' in kore_capabilities %}
-          <a class="{% if '/trabajo/' in request.path %}is-active{% endif %}" href="/trabajo/">
-            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 7a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm6 4a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM3 20v-3a5 5 0 0 1 10 0v3M12 20v-2a4 4 0 0 1 8 0v2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span>Personal y tareas</span>
-          </a>
           {% endif %}
           {% if 'field_offline' in kore_capabilities %}
           <a class="kore-field-link" href="/field/">
@@ -66,56 +46,66 @@
           </a>
           {% endif %}
           {% if 'finance' in kore_capabilities %}
-          <a class="{% if '/finanzas/' in request.path %}is-active{% endif %}" href="/finanzas/">
-            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 19V9m5 10V5m5 14v-7m5 7V3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span>Produccion y cuentas</span>
+          <a class="{% if '/finanzas/' in request.path %}is-active{% endif %}" href="/finanzas/" {% if '/finanzas/' in request.path %}aria-current="page"{% endif %}>
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 19V9m5 10V5m5 14v-7m5 7V3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span>Producción y cuentas</span>
           </a>
           {% endif %}
           {% if 'documents' in kore_capabilities %}
-          <a class="{% if '/cumplimiento/' in request.path %}is-active{% endif %}" href="/cumplimiento/">
-            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 3h8l3 3v15H7z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11h5m-5 4h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span>Guias y documentos</span>
+          <a class="{% if '/cumplimiento/' in request.path %}is-active{% endif %}" href="/cumplimiento/" {% if '/cumplimiento/' in request.path %}aria-current="page"{% endif %}>
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 3h8l3 3v15H7z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11h5m-5 4h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span>Guías y documentos</span>
           </a>
           {% endif %}
-          {% if 'audit' in kore_capabilities and perms.audit.view_auditevent %}
-          <a class="{% if '/auditoria/' in request.path %}is-active{% endif %}" href="/auditoria/">
-            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 3h12v18H6V3Z" stroke="currentColor" stroke-width="1.8"/><path d="M9 8h6M9 12h6M9 16h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span>Auditoria</span>
-          </a>
-          {% endif %}
+          <details class="kore-nav-more" {% if '/compras/' in request.path or '/crecimiento/' in request.path or '/historial/' in request.path or '/pastoreo/' in request.path or '/trabajo/' in request.path or '/auditoria/' in request.path or '/informacion/' in request.path or '/configuracion/' in request.path %}open{% endif %}>
+            <summary>
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="5" cy="12" r="1.5" fill="currentColor"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/><circle cx="19" cy="12" r="1.5" fill="currentColor"/></svg>
+              <span>Más herramientas</span>
+            </summary>
+            <nav aria-label="Herramientas de gestión">
+              {% if 'procurement' in kore_capabilities %}<a class="{% if '/compras/' in request.path %}is-active{% endif %}" href="/compras/">Compras y proveedores</a>{% endif %}
+              {% if 'growth' in kore_capabilities %}<a class="{% if '/crecimiento/' in request.path or '/historial/' in request.path %}is-active{% endif %}" href="/crecimiento/">Pesos y crecimiento</a>{% endif %}
+              {% if 'grazing' in kore_capabilities %}<a class="{% if '/pastoreo/' in request.path %}is-active{% endif %}" href="/pastoreo/">Potreros y rotación</a>{% endif %}
+              {% if 'workforce' in kore_capabilities %}<a class="{% if '/trabajo/' in request.path %}is-active{% endif %}" href="/trabajo/">Personal y tareas</a>{% endif %}
+              {% if 'audit' in kore_capabilities and perms.audit.view_auditevent %}<a class="{% if '/auditoria/' in request.path %}is-active{% endif %}" href="/auditoria/">Auditoría</a>{% endif %}
+              <a href="{% url 'dashboard:information_center' %}">Información externa</a>
+              <a href="{% url 'dashboard:tenant_settings' %}">Configuración</a>
+            </nav>
+          </details>
         </nav>
         <div class="kore-sidebar-footer">
-          <a href="{% url 'dashboard:information_center' %}">Informacion externa</a>
-          <a href="{% url 'dashboard:tenant_settings' %}">Configuracion</a>
           <form method="post" action="{% url 'identity:logout' %}">
             {% csrf_token %}
-            <button type="submit">Cerrar jornada</button>
+            <button type="submit">Cerrar sesión</button>
           </form>
         </div>
       </aside>
-      <main class="kore-main">
+      <main id="main-content" class="kore-main" tabindex="-1">
         {% block content %}{% endblock %}
       </main>
-      <nav class="kore-mobile-nav" aria-label="Navegacion rapida">
+      <nav class="kore-mobile-nav" aria-label="Navegación rápida">
         <a class="{% if request.path == '/' %}is-active{% endif %}" href="/"><span>Hoy</span></a>
         {% if 'herd' in kore_capabilities or 'inventory' in kore_capabilities %}<a class="{% if request.path == '/datos/' or '/crecimiento/' in request.path or '/historial/' in request.path %}is-active{% endif %}" href="/datos/"><span>{% if 'herd' in kore_capabilities %}Hato{% else %}Bodega{% endif %}</span></a>{% endif %}
-        {% if 'grazing' in kore_capabilities %}<a class="{% if '/pastoreo/' in request.path %}is-active{% endif %}" href="/pastoreo/"><span>Potreros</span></a>{% endif %}
-        {% if 'workforce' in kore_capabilities %}<a class="{% if '/trabajo/' in request.path %}is-active{% endif %}" href="/trabajo/"><span>Tareas</span></a>{% endif %}
-        {% if 'procurement' in kore_capabilities %}<a class="{% if '/compras/' in request.path %}is-active{% endif %}" href="/compras/"><span>Compras</span></a>{% endif %}
         {% if 'field_offline' in kore_capabilities %}<a class="is-field" href="/field/"><span>Registrar</span></a>{% endif %}
         {% if 'finance' in kore_capabilities %}<a class="{% if '/finanzas/' in request.path %}is-active{% endif %}" href="/finanzas/"><span>Cuentas</span></a>{% endif %}
       </nav>
       <details class="kore-mobile-more">
-        <summary><span aria-hidden="true">...</span><small>Mas</small></summary>
-        <nav aria-label="Navegacion secundaria">
-          {% if 'documents' in kore_capabilities %}<a class="{% if '/cumplimiento/' in request.path %}is-active{% endif %}" href="/cumplimiento/">Guias y documentos</a>{% endif %}
-          {% if 'audit' in kore_capabilities and perms.audit.view_auditevent %}<a href="/auditoria/">Auditoria</a>{% endif %}
-          <a href="{% url 'dashboard:information_center' %}">Informacion externa</a>
-          <a href="{% url 'dashboard:tenant_settings' %}">Configuracion</a>
+        <summary><span aria-hidden="true">...</span><small>Más</small></summary>
+        <nav aria-label="Navegación secundaria">
+          {% if 'documents' in kore_capabilities %}<a class="{% if '/cumplimiento/' in request.path %}is-active{% endif %}" href="/cumplimiento/">Guías y documentos</a>{% endif %}
+          {% if 'procurement' in kore_capabilities %}<a class="{% if '/compras/' in request.path %}is-active{% endif %}" href="/compras/">Compras y proveedores</a>{% endif %}
+          {% if 'growth' in kore_capabilities %}<a class="{% if '/crecimiento/' in request.path or '/historial/' in request.path %}is-active{% endif %}" href="/crecimiento/">Pesos y crecimiento</a>{% endif %}
+          {% if 'grazing' in kore_capabilities %}<a class="{% if '/pastoreo/' in request.path %}is-active{% endif %}" href="/pastoreo/">Potreros y rotación</a>{% endif %}
+          {% if 'workforce' in kore_capabilities %}<a class="{% if '/trabajo/' in request.path %}is-active{% endif %}" href="/trabajo/">Personal y tareas</a>{% endif %}
+          {% if 'audit' in kore_capabilities and perms.audit.view_auditevent %}<a href="/auditoria/">Auditoría</a>{% endif %}
+          <a href="{% url 'dashboard:information_center' %}">Información externa</a>
+          <a href="{% url 'dashboard:tenant_settings' %}">Configuración</a>
           <form method="post" action="{% url 'identity:logout' %}">
             {% csrf_token %}
-            <button type="submit">Cerrar jornada</button>
+            <button type="submit">Cerrar sesión</button>
           </form>
         </nav>
       </details>
     </div>
+    <script src="{% static 'ui/js/app.js' %}?v=20261012-pilot1" defer></script>
     {% block extra_scripts %}{% endblock %}
   </body>
 </html>

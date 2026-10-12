@@ -285,6 +285,6 @@ def test_finance_dashboard_renders_for_tenant():
     )
 
     assert response.status_code == 200
-    assert "Motor Financiero" in response.content.decode()
+    assert "Resultado de la finca" in response.content.decode()
     assert fragment.status_code == 200
-    assert "P&L diario" in fragment.content.decode()
+    assert "Resultado por día" in fragment.content.decode()

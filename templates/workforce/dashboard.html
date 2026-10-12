@@ -22,10 +22,10 @@
     </form>
 
     {% if workforce_message %}
-      <div class="rounded border border-emerald-700 bg-emerald-950 px-4 py-3 text-sm text-emerald-100">{{ workforce_message }}</div>
+      <div class="rounded border border-emerald-700 bg-emerald-950 px-4 py-3 text-sm text-emerald-100" role="status">{{ workforce_message }}</div>
     {% endif %}
     {% if workforce_error %}
-      <div class="rounded border border-red-800 bg-red-950 px-4 py-3 text-sm text-red-100">{{ workforce_error }}</div>
+      <div class="rounded border border-red-800 bg-red-950 px-4 py-3 text-sm text-red-100" role="alert">{{ workforce_error }}</div>
     {% endif %}
 
     <section class="grid gap-3 sm:grid-cols-2 xl:grid-cols-6" aria-label="Resumen de personal y tareas">
@@ -45,7 +45,7 @@
         </header>
         <div class="overflow-x-auto">
           <table class="w-full min-w-[900px] text-left text-sm">
-            <thead class="bg-neutral-900 text-xs uppercase text-neutral-500"><tr><th class="px-4 py-3">Fecha</th><th>Tarea</th><th>Responsable</th><th>Contexto</th><th>Prioridad</th><th>Estado</th><th></th></tr></thead>
+            <thead class="bg-neutral-900 text-xs uppercase text-neutral-500"><tr><th class="px-4 py-3">Fecha</th><th>Tarea</th><th>Responsable</th><th>Contexto</th><th>Prioridad</th><th>Estado</th><th>Acciones</th></tr></thead>
             <tbody class="divide-y divide-neutral-800">
               {% for task in open_tasks %}
                 <tr class="{% if task.is_overdue %}bg-red-950/40{% endif %}">
@@ -57,7 +57,7 @@
                   <td>{% if task.status == 'in_progress' %}<span class="font-semibold text-sky-300">En curso</span>{% else %}Pendiente{% endif %}</td>
                   <td class="flex justify-end gap-2 py-2 pr-3">
                     <a class="border border-neutral-700 px-2 py-1 text-xs text-neutral-300" href="{% url 'workforce:task_edit' task.id %}">Editar</a>
-                    <form method="post" action="{% url 'workforce:task_cancel' task.id %}">{% csrf_token %}<button class="border border-red-800 px-2 py-1 text-xs text-red-300" type="submit">Cancelar</button></form>
+                    <form method="post" action="{% url 'workforce:task_cancel' task.id %}" data-confirm="¿Cancelar esta tarea? Dejará de aparecer como trabajo pendiente.">{% csrf_token %}<button class="border border-red-800 px-2 py-1 text-xs text-red-300" type="submit">Cancelar</button></form>
                   </td>
                 </tr>
               {% empty %}
@@ -112,12 +112,12 @@
       <header class="border-b border-neutral-800 px-4 py-3"><h2 class="text-sm font-semibold">Personal activo</h2></header>
       <div class="overflow-x-auto">
         <table class="w-full min-w-[760px] text-left text-sm">
-          <thead class="bg-neutral-900 text-xs uppercase text-neutral-500"><tr><th class="px-4 py-3">Codigo</th><th>Nombre</th><th>Cargo</th><th>Telefono</th><th>Usuario</th><th class="text-right">Costo/hora</th><th></th></tr></thead>
+          <thead class="bg-neutral-900 text-xs uppercase text-neutral-500"><tr><th class="px-4 py-3">Código</th><th>Nombre</th><th>Cargo</th><th>Teléfono</th><th>Usuario</th><th class="text-right">Costo/hora</th><th>Acciones</th></tr></thead>
           <tbody class="divide-y divide-neutral-800">
             {% for worker in workers %}
-              <tr><td class="px-4 py-3 font-mono">{{ worker.code }}</td><td class="font-semibold">{{ worker.full_name }}</td><td>{{ worker.get_position_display }}</td><td>{{ worker.phone|default:"-" }}</td><td>{{ worker.user.username|default:"-" }}</td><td class="text-right">$ {{ worker.hourly_rate|floatformat:2 }}</td><td class="flex justify-end gap-2 py-2 pr-3"><a class="border border-neutral-700 px-2 py-1 text-xs text-neutral-300" href="{% url 'workforce:worker_edit' worker.id %}">Editar</a><form method="post" action="{% url 'workforce:worker_deactivate' worker.id %}">{% csrf_token %}<button class="border border-red-800 px-2 py-1 text-xs text-red-300" type="submit">Desactivar</button></form></td></tr>
+              <tr><td class="px-4 py-3 font-mono">{{ worker.code }}</td><td class="font-semibold">{{ worker.full_name }}</td><td>{{ worker.get_position_display }}</td><td>{{ worker.phone|default:"-" }}</td><td>{{ worker.user.username|default:"-" }}</td><td class="text-right">$ {{ worker.hourly_rate|floatformat:2 }}</td><td class="flex justify-end gap-2 py-2 pr-3"><a class="border border-neutral-700 px-2 py-1 text-xs text-neutral-300" href="{% url 'workforce:worker_edit' worker.id %}">Editar</a><form method="post" action="{% url 'workforce:worker_deactivate' worker.id %}" data-confirm="¿Desactivar este trabajador? Dejará de aparecer en nuevas asignaciones.">{% csrf_token %}<button class="border border-red-800 px-2 py-1 text-xs text-red-300" type="submit">Desactivar</button></form></td></tr>
             {% empty %}
-              <tr><td class="px-4 py-6 text-neutral-500" colspan="7">Aun no hay personal registrado.</td></tr>
+              <tr><td class="px-4 py-6 text-neutral-500" colspan="7">Aún no hay personal registrado.</td></tr>
             {% endfor %}
           </tbody>
         </table>

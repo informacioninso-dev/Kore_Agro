@@ -4,9 +4,11 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Acceso interno a la administración de organizaciones KORE Agro.">
+    <link rel="icon" href="{% static 'field/icon.svg' %}" type="image/svg+xml">
     <title>Acceso de plataforma | KORE Agro</title>
     <link rel="stylesheet" href="{% static 'ui/css/typography.css' %}?v=20261001-brand1">
-    <link rel="stylesheet" href="{% static 'platform/css/app.css' %}?v=20261001-brand2">
+    <link rel="stylesheet" href="{% static 'platform/css/app.css' %}?v=20261012-pilot1">
   </head>
   <body class="platform-login-body">
     <main class="platform-login-shell">
@@ -16,18 +18,18 @@
       </section>
       <section class="platform-login-panel">
         <p class="platform-eyebrow">Control de plataforma</p>
-        <h1>Superadministracion</h1>
-        <p>Gestion de organizaciones, perfiles operativos y capacidades contratadas.</p>
+        <h1>Superadministración</h1>
+        <p>Gestión de organizaciones, perfiles operativos y capacidades contratadas.</p>
         <form method="post" class="platform-login-form">
           {% csrf_token %}
           <input type="hidden" name="next" value="{{ next }}">
-          {% if form.non_field_errors %}<div class="platform-form-error">{{ form.non_field_errors|striptags }}</div>{% endif %}
+          {% if form.non_field_errors %}<div class="platform-form-error" role="alert">{{ form.non_field_errors|striptags }}</div>{% endif %}
           <label for="{{ form.username.id_for_label }}">Usuario</label>
           {{ form.username }}
-          {% for error in form.username.errors %}<span class="platform-field-error">{{ error }}</span>{% endfor %}
+          {% for error in form.username.errors %}<span class="platform-field-error" role="alert">{{ error }}</span>{% endfor %}
           <label for="{{ form.password.id_for_label }}">Contraseña</label>
           {{ form.password }}
-          {% for error in form.password.errors %}<span class="platform-field-error">{{ error }}</span>{% endfor %}
+          {% for error in form.password.errors %}<span class="platform-field-error" role="alert">{{ error }}</span>{% endfor %}
           <button class="platform-button primary" type="submit">Entrar al panel</button>
         </form>
       </section>

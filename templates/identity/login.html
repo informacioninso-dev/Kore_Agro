@@ -5,8 +5,10 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#183522">
+    <meta name="description" content="Acceso seguro a la operación diaria de su hacienda en KORE AGRO.">
+    <link rel="icon" href="{% static 'field/icon.svg' %}" type="image/svg+xml">
     <link rel="stylesheet" href="{% static 'ui/css/typography.css' %}?v=20261001-brand1">
-    <link rel="stylesheet" href="{% static 'identity/css/login.css' %}?v=20261001-brand1">
+    <link rel="stylesheet" href="{% static 'identity/css/login.css' %}?v=20261012-ux1">
     <title>Entrar a la finca | KORE AGRO</title>
   </head>
   <body>
@@ -59,7 +61,7 @@
               <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="8" r="3.5" stroke="currentColor" stroke-width="1.8"/><path d="M4.5 20c.8-4 3.2-6 7.5-6s6.7 2 7.5 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
               {{ form.username }}
             </div>
-            {% for error in form.username.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
+            {% for error in form.username.errors %}<span class="field-error" role="alert">{{ error }}</span>{% endfor %}
 
             <label for="{{ form.password.id_for_label }}">Contraseña</label>
             <div class="input-wrap password-wrap">
@@ -67,9 +69,9 @@
               {{ form.password }}
               <button class="toggle-password" type="button" data-password-toggle aria-label="Mostrar contraseña">Ver</button>
             </div>
-            {% for error in form.password.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
+            {% for error in form.password.errors %}<span class="field-error" role="alert">{{ error }}</span>{% endfor %}
 
-            <button class="submit-button" type="submit">Entrar a mi finca <span aria-hidden="true">→</span></button>
+            <button class="submit-button" type="submit">Entrar a mi finca</button>
           </form>
 
           <div class="access-help">

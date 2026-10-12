@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import redirect, render
@@ -16,6 +17,7 @@ def _context(overrides: dict | None = None) -> dict:
         "invoices": MilkInvoice.objects.select_related("farm")[:20],
         "guides": AnimalMovementGuide.objects.select_related("farm")
         .prefetch_related("animals")[:20],
+        "sri_enabled": bool(settings.SRI_ADAPTER_CLASS),
         "message": "",
         "error": "",
     }

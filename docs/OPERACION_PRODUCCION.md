@@ -29,10 +29,17 @@ PostgreSQL y Redis no deben exponerse a Internet.
 Verificar el despliegue:
 
 ```bash
-BASE_URL=https://admin.agro.example.com scripts/smoke_test.sh
+BASE_URL=https://admin.agro.example.com \
+TENANT_BASE_URL=https://cliente.agro.example.com \
+scripts/smoke_test.sh
+docker compose --env-file .env.production -f docker-compose.production.yml exec web \
+  python manage.py check_pilot_readiness --domain cliente.agro.example.com
 docker compose --env-file .env.production -f docker-compose.production.yml ps
 docker compose --env-file .env.production -f docker-compose.production.yml logs --tail=100 web worker
 ```
+
+El comando de preparación valida acceso administrativo, perfil y capacidades del MVP,
+hacienda, animales, insumos y existencias. No entregar el demo mientras reporte `[FALTA]`.
 
 ## 3. Actualizacion
 
@@ -40,7 +47,9 @@ docker compose --env-file .env.production -f docker-compose.production.yml logs 
 scripts/backup_database.sh
 git pull --ff-only origin main
 docker compose --env-file .env.production -f docker-compose.production.yml up --build -d
-BASE_URL=https://admin.agro.example.com scripts/smoke_test.sh
+BASE_URL=https://admin.agro.example.com \
+TENANT_BASE_URL=https://cliente.agro.example.com \
+scripts/smoke_test.sh
 ```
 
 El servicio `migrate` aplica migraciones y recolecta archivos estaticos antes de iniciar

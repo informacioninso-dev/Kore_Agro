@@ -19,6 +19,7 @@
   let selectedFarmId = "";
   let syncInFlight = false;
   let syncAgain = false;
+  let feedbackTimer = null;
 
   function openDb() {
     return new Promise((resolve, reject) => {
@@ -113,6 +114,52 @@
     resetLastSync(navigator.onLine ? "Pendiente de envío" : "Guardado en dispositivo");
     if (navigator.onLine) {
       synchronize();
+    }
+  }
+
+  function showFeedback(message, tone = "success") {
+    const feedback = document.getElementById("actionFeedback");
+    window.clearTimeout(feedbackTimer);
+    feedback.textContent = message;
+    feedback.classList.toggle("error", tone === "error");
+    feedback.setAttribute("role", tone === "error" ? "alert" : "status");
+    feedback.setAttribute("aria-live", tone === "error" ? "assertive" : "polite");
+    feedback.classList.remove("hidden");
+    feedbackTimer = window.setTimeout(() => feedback.classList.add("hidden"), 7000);
+  }
+
+  async function queueFormEvent(form, eventType, payload, options = {}) {
+    if (form.dataset.saving === "true") return false;
+    if (options.confirmMessage && !window.confirm(options.confirmMessage)) return false;
+
+    const submit = form.querySelector("button[type='submit']");
+    const originalLabel = submit ? submit.textContent : "";
+    form.dataset.saving = "true";
+    form.setAttribute("aria-busy", "true");
+    if (submit) {
+      submit.disabled = true;
+      submit.textContent = "Guardando...";
+    }
+
+    try {
+      await queueEvent(eventType, payload);
+      resetFieldForm(form);
+      showFeedback(
+        navigator.onLine
+          ? "Registro guardado. Se está enviando al sistema."
+          : "Registro guardado en este dispositivo. Se enviará cuando vuelva la conexión."
+      );
+      return true;
+    } catch (error) {
+      showFeedback("No se pudo guardar. Revisa los datos e inténtalo otra vez.", "error");
+      return false;
+    } finally {
+      delete form.dataset.saving;
+      form.removeAttribute("aria-busy");
+      if (submit) {
+        submit.disabled = false;
+        submit.textContent = originalLabel;
+      }
     }
   }
 
@@ -314,6 +361,10 @@
       element.classList.toggle("capabilityHidden", !available);
     });
 
+    const moreRecords = document.getElementById("moreRecords");
+    const hasSecondaryActions = moreRecords.querySelector(".quickAction:not(.capabilityHidden)");
+    moreRecords.classList.toggle("capabilityHidden", !hasSecondaryActions);
+
     const panels = [...document.querySelectorAll(".panel:not(.capabilityHidden)")];
     const activePanel = document.querySelector(".panel.active:not(.capabilityHidden)");
     if (!activePanel && panels.length) openPanel(panels[0].id);
@@ -395,7 +446,7 @@
   }
 
   function setCaptureEnabled(enabled) {
-    document.querySelectorAll(".quickAction, .tab, .form input, .form select, .form button").forEach((element) => {
+    document.querySelectorAll(".quickAction, .form input, .form select, .form button").forEach((element) => {
       element.disabled = !enabled;
     });
   }
@@ -447,26 +498,19 @@
       const card = document.createElement("button");
       card.type = "button";
       card.className = `attentionCard ${action.priority || "normal"}`;
-      const symbol = document.createElement("span");
-      symbol.className = "attentionSymbol";
-      symbol.textContent = symbolForAction(action.kind);
       const copy = document.createElement("span");
       const title = document.createElement("strong");
       title.textContent = action.title;
       const detail = document.createElement("small");
       detail.textContent = action.detail;
       copy.append(title, detail);
-      const arrow = document.createElement("span");
-      arrow.className = "attentionArrow";
-      arrow.textContent = ">";
-      card.append(symbol, copy, arrow);
+      const actionLabel = document.createElement("span");
+      actionLabel.className = "attentionAction";
+      actionLabel.textContent = "Abrir";
+      card.append(copy, actionLabel);
       card.addEventListener("click", () => openPanel(action.panel, action.animal_id));
       container.appendChild(card);
     });
-  }
-
-  function symbolForAction(kind) {
-    return { withdrawal: "!", dry_off: "◐", pregnancy: "?", treatment: "+" }[kind] || "•";
   }
 
   function labelFor(source, item) {
@@ -521,14 +565,14 @@
   }
 
   function bindForms() {
-    document.getElementById("milkForm").addEventListener("submit", (event) => {
+    document.getElementById("milkForm").addEventListener("submit", async (event) => {
       event.preventDefault();
       const data = formData(event.currentTarget);
       const record =
         data.target_type === "group"
           ? { group_id: data.group_id, liters: data.liters }
           : { animal_id: data.animal_id, liters: data.liters };
-      queueEvent(
+      await queueFormEvent(event.currentTarget,
         "milk.milking_recorded",
         cleanPayload({
           farm_id: selectedFarmId,
@@ -537,13 +581,12 @@
           records: [record]
         })
       );
-      resetFieldForm(event.currentTarget);
     });
 
-    document.getElementById("reproForm").addEventListener("submit", (event) => {
+    document.getElementById("reproForm").addEventListener("submit", async (event) => {
       event.preventDefault();
       const data = formData(event.currentTarget);
-      queueEvent(
+      await queueFormEvent(event.currentTarget,
         data.event_kind,
         cleanPayload({
           farm_id: selectedFarmId,
@@ -557,13 +600,12 @@
           birth_date: data.event_kind === "reproduction.calving_recorded" ? data.occurred_on : ""
         })
       );
-      resetFieldForm(event.currentTarget);
     });
 
-    document.getElementById("healthForm").addEventListener("submit", (event) => {
+    document.getElementById("healthForm").addEventListener("submit", async (event) => {
       event.preventDefault();
       const data = formData(event.currentTarget);
-      queueEvent(
+      await queueFormEvent(event.currentTarget,
         "health.treatment_recorded",
         cleanPayload({
           farm_id: selectedFarmId,
@@ -575,13 +617,12 @@
           milk_withdrawal_hours: data.milk_withdrawal_hours
         })
       );
-      resetFieldForm(event.currentTarget);
     });
 
-    document.getElementById("inventoryForm").addEventListener("submit", (event) => {
+    document.getElementById("inventoryForm").addEventListener("submit", async (event) => {
       event.preventDefault();
       const data = formData(event.currentTarget);
-      queueEvent(
+      await queueFormEvent(event.currentTarget,
         "inventory.input_consumed",
         cleanPayload({
           farm_id: selectedFarmId,
@@ -592,13 +633,12 @@
           notes: data.notes
         })
       );
-      resetFieldForm(event.currentTarget);
     });
 
-    document.getElementById("weightForm").addEventListener("submit", (event) => {
+    document.getElementById("weightForm").addEventListener("submit", async (event) => {
       event.preventDefault();
       const data = formData(event.currentTarget);
-      queueEvent(
+      await queueFormEvent(event.currentTarget,
         "growth.weight_recorded",
         cleanPayload({
           farm_id: selectedFarmId,
@@ -610,14 +650,13 @@
           notes: data.notes
         })
       );
-      resetFieldForm(event.currentTarget);
     });
 
-    document.getElementById("grazingForm").addEventListener("submit", (event) => {
+    document.getElementById("grazingForm").addEventListener("submit", async (event) => {
       event.preventDefault();
       const data = formData(event.currentTarget);
       const starting = data.action_kind === "start";
-      queueEvent(
+      await queueFormEvent(event.currentTarget,
         starting ? "grazing.rotation_started" : "grazing.rotation_finished",
         cleanPayload({
           farm_id: selectedFarmId,
@@ -633,14 +672,13 @@
           notes: data.notes
         })
       );
-      resetFieldForm(event.currentTarget);
     });
 
-    document.getElementById("taskForm").addEventListener("submit", (event) => {
+    document.getElementById("taskForm").addEventListener("submit", async (event) => {
       event.preventDefault();
       const data = formData(event.currentTarget);
       const completing = data.action_kind === "complete";
-      queueEvent(
+      await queueFormEvent(event.currentTarget,
         completing ? "workforce.task_completed" : "workforce.task_started",
         cleanPayload({
           farm_id: selectedFarmId,
@@ -650,13 +688,12 @@
           notes: data.notes
         })
       );
-      resetFieldForm(event.currentTarget);
     });
 
-    document.getElementById("receiptForm").addEventListener("submit", (event) => {
+    document.getElementById("receiptForm").addEventListener("submit", async (event) => {
       event.preventDefault();
       const data = formData(event.currentTarget);
-      queueEvent(
+      await queueFormEvent(event.currentTarget,
         "procurement.purchase_received",
         cleanPayload({
           farm_id: selectedFarmId,
@@ -668,10 +705,9 @@
           notes: data.notes
         })
       );
-      resetFieldForm(event.currentTarget);
     });
 
-    document.getElementById("adjustmentForm").addEventListener("submit", (event) => {
+    document.getElementById("adjustmentForm").addEventListener("submit", async (event) => {
       event.preventDefault();
       const data = formData(event.currentTarget);
       const quantityField = event.currentTarget.elements.quantity_delta;
@@ -680,7 +716,7 @@
         quantityField.reportValidity();
         return;
       }
-      queueEvent(
+      await queueFormEvent(event.currentTarget,
         "inventory.stock_adjusted",
         cleanPayload({
           farm_id: selectedFarmId,
@@ -691,13 +727,12 @@
           group_id: data.group_id
         })
       );
-      resetFieldForm(event.currentTarget);
     });
 
-    document.getElementById("expenseForm").addEventListener("submit", (event) => {
+    document.getElementById("expenseForm").addEventListener("submit", async (event) => {
       event.preventDefault();
       const data = formData(event.currentTarget);
-      queueEvent(
+      await queueFormEvent(event.currentTarget,
         "finance.expense_recorded",
         cleanPayload({
           farm_id: selectedFarmId,
@@ -709,13 +744,12 @@
           notes: data.notes
         })
       );
-      resetFieldForm(event.currentTarget);
     });
 
-    document.getElementById("saleForm").addEventListener("submit", (event) => {
+    document.getElementById("saleForm").addEventListener("submit", async (event) => {
       event.preventDefault();
       const data = formData(event.currentTarget);
-      queueEvent(
+      await queueFormEvent(event.currentTarget,
         "herd.animal_sold",
         cleanPayload({
           farm_id: selectedFarmId,
@@ -723,9 +757,11 @@
           amount: data.amount,
           sale_date: data.sale_date,
           notes: data.notes
-        })
+        }),
+        {
+          confirmMessage: "¿Confirmas la venta? El animal saldrá del hato activo cuando se sincronice."
+        }
       );
-      resetFieldForm(event.currentTarget);
     });
 
     document
@@ -790,7 +826,7 @@
     }
     const remaining = Number(selected.quantity_ordered) - Number(selected.quantity_received);
     form.elements.quantity.max = String(remaining);
-    form.elements.quantity.placeholder = `Maximo ${remaining}`;
+    form.elements.quantity.placeholder = `Máximo ${remaining}`;
     hint.textContent = `Precio aprobado: $ ${selected.unit_cost} por ${selected.unit}.`;
   }
 
@@ -807,22 +843,14 @@
     });
   }
 
-  function bindTabs() {
-    document.querySelectorAll(".tab").forEach((tab) => {
-      tab.addEventListener("click", () => openPanel(tab.dataset.panel));
-    });
-  }
-
   function bindQuickActions() {
     document.querySelectorAll("[data-open-panel]").forEach((button) => {
+      if (!button.hasAttribute("aria-pressed")) button.setAttribute("aria-pressed", "false");
       button.addEventListener("click", () => openPanel(button.dataset.openPanel, null, button.dataset.focus));
     });
   }
 
   function openPanel(panelId, animalId = null, focusSelector = null) {
-    document.querySelectorAll(".tab").forEach((item) => {
-      item.classList.toggle("active", item.dataset.panel === panelId);
-    });
     document.querySelectorAll(".panel").forEach((panel) => {
       panel.classList.toggle("active", panel.id === panelId);
     });
@@ -839,9 +867,10 @@
         animalSelect.value = animalId;
       }
     }
-    panel.scrollIntoView({ behavior: "smooth", block: "start" });
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    panel.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
     const target = focusSelector ? document.querySelector(focusSelector) : null;
-    if (target) setTimeout(() => target.focus(), 350);
+    if (target) setTimeout(() => target.focus(), reduceMotion ? 0 : 350);
   }
 
   function resetFieldForm(form) {
@@ -870,7 +899,9 @@
   }
 
   function todayIso() {
-    return new Date().toISOString().slice(0, 10);
+    const now = new Date();
+    const localTime = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
+    return localTime.toISOString().slice(0, 10);
   }
 
   function setNetworkState(state = navigator.onLine ? "online" : "offline") {
@@ -902,7 +933,6 @@
     db = await openDb();
     setTodayLabel();
     setTodayDefaults();
-    bindTabs();
     bindQuickActions();
     bindForms();
     bindFarmContext();

@@ -178,7 +178,7 @@ def test_grazing_route_requires_the_capability():
     home_response = client.get("/")
 
     assert response.status_code == 403
-    assert "Potreros y rotacion" not in home_response.content.decode()
+    assert "Potreros y rotación" not in home_response.content.decode()
 
 
 @pytest.mark.django_db(transaction=True)
